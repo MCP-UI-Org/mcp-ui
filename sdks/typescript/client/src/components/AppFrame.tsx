@@ -201,10 +201,6 @@ export const AppFrame = (props: AppFrameProps) => {
           });
         };
 
-        // Register logging handler
-        appBridge.onloggingmessage = (params) => {
-          onLoggingMessageRef.current?.(params);
-        };
 
         // Connect the bridge
         await appBridge.connect(
