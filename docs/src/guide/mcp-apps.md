@@ -84,7 +84,8 @@ const widgetUI = createUIResource({
 
 ```typescript
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
-import { createUIResource, RESOURCE_URI_META_KEY } from '@mcp-ui/server';
+import { createUIResource } from '@mcp-ui/server';
+import { registerAppTool, registerAppResource } from '@modelcontextprotocol/ext-apps/server';
 import { z } from 'zod';
 
 const server = new McpServer({ name: 'my-server', version: '1.0.0' });
@@ -96,7 +97,8 @@ const widgetUI = createUIResource({
 });
 
 // Register the resource so the host can fetch it
-server.registerResource(
+registerAppResource(
+  server,
   'widget_ui',           // Resource name
   widgetUI.resource.uri, // Resource URI
   {},                    // Resource metadata
@@ -106,7 +108,8 @@ server.registerResource(
 );
 
 // Register the tool with _meta linking to the UI resource
-server.registerTool(
+registerAppTool(
+  server,
   'my_widget',
   {
     description: 'An interactive widget',
@@ -115,7 +118,9 @@ server.registerTool(
     },
     // This tells MCP Apps hosts where to find the UI
     _meta: {
-      [RESOURCE_URI_META_KEY]: widgetUI.resource.uri
+      ui: {
+        resourceUri: widgetUI.resource.uri
+      }
     }
   },
   async ({ query }) => {
@@ -126,14 +131,15 @@ server.registerTool(
 );
 ```
 
-The key requirement for MCP Apps hosts is that the tool's `_meta` contains the `ui/resourceUri` key pointing to the UI resource URI. This tells the host where to fetch the widget HTML.
+The key requirement for MCP Apps hosts is that the tool's `_meta.ui.resourceUri` points to the UI resource URI. This tells the host where to fetch the widget HTML.
 
 ### 3. Add the MCP-UI Embedded Resource to Tool Responses
 
-To support **MCP-UI hosts** (which expect embedded resources in tool responses), also return a `createUIResource` result **without** the MCP Apps adapter:
+To support **MCP-UI hosts** (which expect embedded resources in tool responses), also return a `createUIResource` result:
 
 ```typescript
-server.registerTool(
+registerAppTool(
+  server,
   'my_widget',
   {
     description: 'An interactive widget',
@@ -142,7 +148,9 @@ server.registerTool(
     },
     // For MCP Apps hosts - points to the registered resource
     _meta: {
-      [RESOURCE_URI_META_KEY]: widgetUI.resource.uri
+      ui: {
+        resourceUri: widgetUI.resource.uri
+      }
     }
   },
   async ({ query }) => {
@@ -326,7 +334,8 @@ import express from 'express';
 import cors from 'cors';
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/streamableHttp.js';
-import { createUIResource, RESOURCE_URI_META_KEY } from '@mcp-ui/server';
+import { createUIResource } from '@mcp-ui/server';
+import { registerAppTool, registerAppResource } from '@modelcontextprotocol/ext-apps/server';
 import { z } from 'zod';
 
 const app = express();
@@ -383,7 +392,8 @@ const graphUI = createUIResource({
 });
 
 // Register the UI resource
-server.registerResource(
+registerAppResource(
+  server,
   'graph_ui',
   graphUI.resource.uri,
   {},
@@ -393,7 +403,8 @@ server.registerResource(
 );
 
 // Register the tool with _meta linking to the UI resource
-server.registerTool(
+registerAppTool(
+  server,
   'show_graph',
   {
     description: 'Display an interactive graph',
@@ -402,7 +413,9 @@ server.registerTool(
     },
     // For MCP Apps hosts - points to the registered resource
     _meta: {
-      [RESOURCE_URI_META_KEY]: graphUI.resource.uri
+      ui: {
+        resourceUri: graphUI.resource.uri
+      }
     }
   },
   async ({ title }) => {

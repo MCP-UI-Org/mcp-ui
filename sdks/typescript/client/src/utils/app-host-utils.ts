@@ -1,11 +1,12 @@
 import {
-  RESOURCE_URI_META_KEY,
+  McpUiSandboxProxyReadyNotification,
+  getToolUiResourceUri as _getToolUiResourceUri,
   RESOURCE_MIME_TYPE,
-  SANDBOX_PROXY_READY_METHOD,
 } from '@modelcontextprotocol/ext-apps/app-bridge';
 import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import { Tool } from '@modelcontextprotocol/sdk/types.js';
 
+const SANDBOX_PROXY_READY_METHOD: McpUiSandboxProxyReadyNotification['method'] = 'ui/notifications/sandbox-proxy-ready';
 const DEFAULT_SANDBOX_TIMEOUT_MS = 10000;
 
 export async function setupSandboxProxyIframe(sandboxProxyUrl: URL): Promise<{
@@ -91,10 +92,8 @@ export async function getToolUiResourceUri(
     return null;
   }
 
-  let uri: string;
-  if (RESOURCE_URI_META_KEY in tool._meta) {
-    uri = String(tool._meta[RESOURCE_URI_META_KEY]);
-  } else {
+  const uri = _getToolUiResourceUri(tool);
+  if (!uri) {
     return null;
   }
   if (!uri.startsWith('ui://')) {

@@ -3,7 +3,9 @@ import cors from 'cors';
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/streamableHttp.js';
 import { isInitializeRequest } from '@modelcontextprotocol/sdk/types.js';
-import { createUIResource, RESOURCE_URI_META_KEY } from '@mcp-ui/server';
+import { createUIResource } from '@mcp-ui/server';
+import { registerAppTool, registerAppResource } from '@modelcontextprotocol/ext-apps/server';
+
 import { randomUUID } from 'crypto';
 import { z } from 'zod';
 
@@ -365,7 +367,8 @@ app.post('/mcp', async (req, res) => {
     });
 
     // Register the UI resource so the host can fetch it
-    server.registerResource(
+    registerAppResource(
+      server,
       'weather_dashboard_ui',
       weatherDashboardUI.resource.uri,
       {},
@@ -375,7 +378,8 @@ app.post('/mcp', async (req, res) => {
     );
 
     // Register the tool with _meta linking to the UI resource
-    server.registerTool(
+    registerAppTool(
+      server,
       'weather_dashboard',
       {
         description: 'Interactive weather dashboard widget',
@@ -384,7 +388,9 @@ app.post('/mcp', async (req, res) => {
         },
         // This tells MCP Apps hosts where to find the UI
         _meta: {
-          [RESOURCE_URI_META_KEY]: weatherDashboardUI.resource.uri,
+          ui: {
+            resourceUri: weatherDashboardUI.resource.uri
+          }
         },
       },
       async ({ location }) => {
