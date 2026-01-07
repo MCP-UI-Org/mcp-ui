@@ -22,7 +22,6 @@ vi.mock('@modelcontextprotocol/ext-apps/app-bridge', () => {
 // Track registered handlers
 let registeredOninitialized: (() => void) | null = null;
 let registeredOnsizechange: ((params: { width?: number; height?: number }) => void) | null = null;
-let registeredOnloggingmessage: ((params: object) => void) | null = null;
 
 // Mock AppBridge factory
 const createMockAppBridge = () => {
@@ -35,7 +34,6 @@ const createMockAppBridge = () => {
     getAppCapabilities: vi.fn().mockReturnValue({ tools: {} }),
     _oninitialized: null as (() => void) | null,
     _onsizechange: null as ((params: { width?: number; height?: number }) => void) | null,
-    _onloggingmessage: null as ((params: object) => void) | null,
   };
 
   Object.defineProperty(bridge, 'oninitialized', {
@@ -51,13 +49,6 @@ const createMockAppBridge = () => {
       registeredOnsizechange = fn;
     },
     get: () => bridge._onsizechange,
-  });
-  Object.defineProperty(bridge, 'onloggingmessage', {
-    set: (fn) => {
-      bridge._onloggingmessage = fn;
-      registeredOnloggingmessage = fn;
-    },
-    get: () => bridge._onloggingmessage,
   });
 
   return bridge;
@@ -78,7 +69,6 @@ describe('<AppFrame />', () => {
     vi.clearAllMocks();
     registeredOninitialized = null;
     registeredOnsizechange = null;
-    registeredOnloggingmessage = null;
     mockAppBridge = createMockAppBridge();
 
     // Create mock contentWindow
@@ -238,23 +228,6 @@ describe('<AppFrame />', () => {
     });
 
     expect(onSizeChanged).toHaveBeenCalledWith({ width: 800, height: 600 });
-  });
-
-  it('should call onLoggingMessage when logging message received', async () => {
-    const onLoggingMessage = vi.fn();
-
-    render(<AppFrame {...getPropsWithBridge({ onLoggingMessage })} />);
-
-    await act(() => {
-      onReadyResolve();
-    });
-
-    const logParams = { level: 'info', data: 'test message' };
-    await act(() => {
-      registeredOnloggingmessage?.(logParams);
-    });
-
-    expect(onLoggingMessage).toHaveBeenCalledWith(logParams);
   });
 
   it('should forward CSP to sandbox', async () => {

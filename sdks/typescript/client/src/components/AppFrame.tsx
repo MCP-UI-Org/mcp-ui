@@ -1,10 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 
-import type {
-  CallToolResult,
-  LoggingMessageNotification,
-  Implementation,
-} from '@modelcontextprotocol/sdk/types.js';
+import type { CallToolResult, Implementation } from '@modelcontextprotocol/sdk/types.js';
 
 import {
   AppBridge,
@@ -54,9 +50,6 @@ export interface AppFrameProps {
   /** Callback when guest reports size change */
   onSizeChanged?: (params: McpUiSizeChangedNotification['params']) => void;
 
-  /** Callback when guest sends a logging message */
-  onLoggingMessage?: (params: LoggingMessageNotification['params']) => void;
-
   /** Callback when app initialization completes, with app info */
   onInitialized?: (appInfo: AppInfo) => void;
 
@@ -98,7 +91,6 @@ export const AppFrame = (props: AppFrameProps) => {
     sandbox,
     appBridge,
     onSizeChanged,
-    onLoggingMessage,
     onInitialized,
     toolInput,
     toolResult,
@@ -117,13 +109,11 @@ export const AppFrame = (props: AppFrameProps) => {
 
   // Refs for callbacks to avoid effect re-runs
   const onSizeChangedRef = useRef(onSizeChanged);
-  const onLoggingMessageRef = useRef(onLoggingMessage);
   const onInitializedRef = useRef(onInitialized);
   const onErrorRef = useRef(onError);
 
   useEffect(() => {
     onSizeChangedRef.current = onSizeChanged;
-    onLoggingMessageRef.current = onLoggingMessage;
     onInitializedRef.current = onInitialized;
     onErrorRef.current = onError;
   });
