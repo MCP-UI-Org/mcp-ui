@@ -195,8 +195,9 @@ class McpAppsAdapter {
                 | 'pip'
                 | 'fullscreen';
             if (this.hostContext.locale) this.currentRenderData.locale = this.hostContext.locale;
-            if (this.hostContext.viewport?.maxHeight)
-              this.currentRenderData.maxHeight = this.hostContext.viewport.maxHeight;
+            const dims = this.hostContext.containerDimensions;
+            if (dims && 'maxHeight' in dims && dims.maxHeight !== undefined)
+              this.currentRenderData.maxHeight = dims.maxHeight;
           }
 
           // Send initial render data to MCP-UI app
@@ -373,8 +374,9 @@ class McpAppsAdapter {
           if (data.params?.displayMode)
             this.currentRenderData.displayMode = data.params.displayMode;
           if (data.params?.locale) this.currentRenderData.locale = data.params.locale;
-          if (data.params?.viewport?.maxHeight)
-            this.currentRenderData.maxHeight = data.params.viewport.maxHeight;
+          const contextDims = data.params?.containerDimensions;
+          if (contextDims && 'maxHeight' in contextDims && contextDims.maxHeight !== undefined)
+            this.currentRenderData.maxHeight = contextDims.maxHeight;
           this.sendRenderData();
           break;
 

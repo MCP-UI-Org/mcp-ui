@@ -7,6 +7,7 @@ export default defineConfig({
     setupFiles: './vitest.setup.ts',
     globalSetup: './vitest.global-setup.ts',
     // include: ['sdks/typescript/*/src/**/__tests__/**/*.test.ts'],
+    exclude: ['**/node_modules/**', '**/dist/**', '**/.pnpm-store/**'],
     coverage: {
       provider: 'v8',
       reporter: ['text', 'json', 'html'],
