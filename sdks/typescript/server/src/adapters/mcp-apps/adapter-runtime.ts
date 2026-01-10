@@ -368,7 +368,7 @@ class McpAppsAdapter {
           break;
 
         // MCP Apps SEP: Host context changed (theme, viewport, etc.)
-        case METHODS.HOST_CONTEXT_CHANGED:
+        case METHODS.HOST_CONTEXT_CHANGED: {
           // Update stored render data with context
           if (data.params?.theme) this.currentRenderData.theme = data.params.theme;
           if (data.params?.displayMode)
@@ -379,6 +379,7 @@ class McpAppsAdapter {
             this.currentRenderData.maxHeight = contextDims.maxHeight;
           this.sendRenderData();
           break;
+        }
 
         // MCP Apps SEP: Size change notification from host
         case METHODS.SIZE_CHANGED:
