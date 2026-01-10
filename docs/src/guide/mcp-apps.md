@@ -560,6 +560,34 @@ function LowLevelToolUI({ html, client }) {
 
 Both components require a sandbox proxy HTML file to be served. This provides security isolation for the guest UI. The sandbox proxy URL should point to a page that loads the MCP Apps sandbox proxy script.
 
+## Declaring UI Extension Support
+
+When creating your MCP client, declare UI extension support using the provided type and capabilities:
+
+```typescript
+import { Client } from '@modelcontextprotocol/sdk/client/index.js';
+import {
+  type ClientCapabilitiesWithExtensions,
+  UI_EXTENSION_CAPABILITIES,
+} from '@mcp-ui/client';
+
+const capabilities: ClientCapabilitiesWithExtensions = {
+  // Standard capabilities
+  roots: { listChanged: true },
+  // UI extension support (SEP-1724 pattern)
+  extensions: UI_EXTENSION_CAPABILITIES,
+};
+
+const client = new Client(
+  { name: 'my-app', version: '1.0.0' },
+  { capabilities }
+);
+```
+
+This tells MCP servers that your client can render UI resources with MIME type `text/html;profile=mcp-app`.
+
+> **Note:** This uses the `extensions` field pattern from [SEP-1724](https://github.com/modelcontextprotocol/modelcontextprotocol/issues/1724), which is not yet part of the official MCP protocol.
+
 ## Related Resources
 
 - [MCP Apps SEP Specification](https://github.com/modelcontextprotocol/ext-apps/blob/main/specification/draft/apps.mdx)
