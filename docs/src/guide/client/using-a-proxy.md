@@ -36,9 +36,12 @@ You can find a complete example for a site with restrictive CSP that uses the ho
 ```mermaid
 sequenceDiagram
   participant Host as Host Page
+  participant Server as Proxy Server
   participant Proxy as Proxy iframe
   participant Inner as Inner iframe (UI widget)
-  Host->>Proxy: Load proxy (with "?url" or "?contentType=rawhtml")
+  Host->>Server: Request proxy (with "?csp=<json>&contentType=rawhtml")
+  Server->>Server: Parse CSP from query param
+  Server-->>Proxy: Serve HTML with CSP HTTP headers
   alt External URL
     Proxy->>Inner: Create with src = decoded url
   else rawHtml
@@ -79,6 +82,56 @@ A valid proxy script must:
 3.  **Sandbox the Iframe**: For external URLs, the nested iframe should be sandboxed with `allow-scripts allow-same-origin`. For raw HTML mode, the inner iframe does **not** use a sandbox attribute—this is intentional because `document.write()` requires same-origin access to the iframe's document. Security for raw HTML is enforced by the outer iframe's sandbox (controlled by the host) and the double-iframe isolation architecture.
 4.  **Forward `postMessage` Events**: To allow communication between the host application and the embedded external URL, the proxy needs to forward `message` events between `window.parent` and the iframe's `contentWindow`. For security, it's critical to use a specific `targetOrigin` instead of `*` in `postMessage` calls whenever possible. The `targetOrigin` for messages to the iframe should be the external URL's origin; Messages to the parent will default to `*`.
 5.  **Permissive Proxy CSP**: Serve the proxy page with a permissive CSP that does not block nested iframe content (e.g., allowing scripts, styles, images) since the host CSP is intentionally not applied on the proxy origin.
+6.  **(Recommended) CSP via HTTP Headers**: For enhanced security, the proxy server can read a `csp` query parameter and set Content-Security-Policy HTTP headers. See [CSP Query Parameter](#csp-query-parameter) below.
+
+### CSP Query Parameter
+
+When CSP metadata is provided, `mcp-ui` appends it to the proxy URL as a `?csp=<json>` query parameter. This allows proxy servers to set CSP via HTTP headers, which is more secure than meta tags or postMessage-based CSP injection (which can be bypassed by malicious content).
+
+**Example URL:**
+```
+https://my-proxy.com/?contentType=rawhtml&csp={"connectDomains":["https://api.example.com"],"resourceDomains":["https://cdn.example.com"]}
+```
+
+**Server-side implementation (Express example):**
+```typescript
+import type { McpUiResourceCsp } from '@modelcontextprotocol/ext-apps/app-bridge';
+
+app.get('/proxy', (req, res) => {
+  let cspConfig: McpUiResourceCsp | undefined;
+  if (typeof req.query.csp === 'string') {
+    try {
+      cspConfig = JSON.parse(req.query.csp);
+    } catch (e) { /* ignore invalid JSON */ }
+  }
+
+  const cspHeader = buildCspHeader(cspConfig);
+  res.setHeader('Content-Security-Policy', cspHeader);
+  res.sendFile('proxy.html');
+});
+
+function buildCspHeader(csp?: McpUiResourceCsp): string {
+  const resourceDomains = csp?.resourceDomains?.join(' ') ?? '';
+  const connectDomains = csp?.connectDomains?.join(' ') ?? '';
+  const frameDomains = csp?.frameDomains?.join(' ');
+
+  return [
+    "default-src 'self' 'unsafe-inline'",
+    `script-src 'self' 'unsafe-inline' 'unsafe-eval' blob: data: ${resourceDomains}`.trim(),
+    `style-src 'self' 'unsafe-inline' blob: data: ${resourceDomains}`.trim(),
+    `img-src 'self' data: blob: ${resourceDomains}`.trim(),
+    `font-src 'self' data: blob: ${resourceDomains}`.trim(),
+    `connect-src 'self' ${connectDomains}`.trim(),
+    `worker-src 'self' blob: ${resourceDomains}`.trim(),
+    frameDomains ? `frame-src ${frameDomains}` : "frame-src 'none'",
+    "object-src 'none'",
+  ].join('; ');
+}
+```
+
+::: tip
+The CSP is also sent via `postMessage` after the sandbox loads as a fallback for proxies that don't support the query parameter approach. However, HTTP header-based CSP is strongly recommended as it's tamper-proof.
+:::
 
 ### Example Self-Hosted Proxy
 

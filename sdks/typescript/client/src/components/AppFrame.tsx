@@ -13,6 +13,23 @@ import {
 import { setupSandboxProxyIframe } from '../utils/app-host-utils';
 
 /**
+ * Build sandbox URL with CSP query parameter for HTTP header-based CSP enforcement.
+ *
+ * When the proxy server supports it, CSP passed via query parameter allows the server
+ * to set CSP via HTTP headers (tamper-proof) rather than relying on meta tags or
+ * postMessage-based CSP injection (which can be bypassed by malicious content).
+ *
+ * @see https://github.com/modelcontextprotocol/ext-apps/pull/234
+ */
+function buildSandboxUrl(baseUrl: URL, csp?: McpUiResourceCsp): URL {
+  const url = new URL(baseUrl.href);
+  if (csp && Object.keys(csp).length > 0) {
+    url.searchParams.set('csp', JSON.stringify(csp));
+  }
+  return url;
+}
+
+/**
  * Information about the guest app, available after initialization.
  */
 export interface AppInfo {
@@ -30,7 +47,19 @@ export interface SandboxConfig {
   url: URL;
   /** Override iframe sandbox attribute (default: "allow-scripts allow-same-origin allow-forms") */
   permissions?: string;
-  /** CSP metadata to forward to the sandbox proxy */
+  /**
+   * CSP metadata for the sandbox.
+   *
+   * This CSP is passed to the sandbox proxy in two ways:
+   * 1. Via URL query parameter (`?csp=<json>`) - allows servers that support it to set
+   *    CSP via HTTP headers (tamper-proof, recommended)
+   * 2. Via postMessage after sandbox loads - fallback for proxies that don't parse query params
+   *
+   * For maximum security, use a proxy server that reads the `csp` query parameter and sets
+   * Content-Security-Policy HTTP headers accordingly.
+   *
+   * @see https://github.com/modelcontextprotocol/ext-apps/pull/234
+   */
   csp?: McpUiResourceCsp;
 }
 
@@ -120,7 +149,11 @@ export const AppFrame = (props: AppFrameProps) => {
 
   // Effect 1: Set up sandbox iframe and connect AppBridge
   useEffect(() => {
-    const sandboxUrlString = sandbox.url.href;
+    // Build sandbox URL with CSP query parameter for HTTP header-based CSP enforcement.
+    // Servers that support this will parse the CSP from the query param and set it via
+    // HTTP headers (tamper-proof). The CSP is also sent via postMessage as fallback.
+    const sandboxUrl = buildSandboxUrl(sandbox.url, sandbox.csp);
+    const sandboxUrlString = sandboxUrl.href;
 
     // If we already have an iframe set up for this sandbox URL AND the same appBridge, skip setup
     // This preserves the iframe state across React re-renders (including StrictMode)
@@ -151,7 +184,7 @@ export const AppFrame = (props: AppFrameProps) => {
           currentAppBridgeRef.current = null;
         }
 
-        const { iframe, onReady } = await setupSandboxProxyIframe(sandbox.url);
+        const { iframe, onReady } = await setupSandboxProxyIframe(sandboxUrl);
 
         if (!mounted) return;
 
@@ -214,7 +247,7 @@ export const AppFrame = (props: AppFrameProps) => {
     return () => {
       mounted = false;
     };
-  }, [sandbox.url, appBridge]);
+  }, [sandbox.url, sandbox.csp, appBridge]);
 
   // Effect 2: Send HTML to sandbox when bridge is connected
   useEffect(() => {
