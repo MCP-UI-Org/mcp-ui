@@ -47,7 +47,7 @@ export default withMermaid(
     vite: {
       plugins: [],
       optimizeDeps: {
-        include: ['vue', '@vue/shared'],
+        include: ['vue', '@vue/shared', 'dayjs', 'mermaid'],
       },
     },
 
@@ -192,6 +192,7 @@ export default withMermaid(
             collapsed: false,
             items: [
               { text: 'Overview', link: '/guide/client/overview' },
+              { text: 'Walkthrough', link: '/guide/client/walkthrough' },
               {
                 text: 'UIResourceRenderer',
                 items: [

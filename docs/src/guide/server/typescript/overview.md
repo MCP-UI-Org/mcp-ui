@@ -1,20 +1,51 @@
 # @mcp-ui/server Overview
 
-The `@mcp-ui/server` package provides utilities to generate UI resources (`UIResource`) on your MCP server. It allows you to define UI snippets on the server-side, which can then be seamlessly and securely rendered on the client.
+The `@mcp-ui/server` package provides utilities to build MCP Apps - tools with interactive UIs. It works with `@modelcontextprotocol/ext-apps` to implement the MCP Apps standard.
 
 For a complete example, see the [`typescript-server-demo`](https://github.com/idosal/mcp-ui/tree/docs/ts-example/examples/typescript-server-demo).
+
+## MCP Apps Pattern (Recommended)
+
+```typescript
+import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
+import { registerAppTool, registerAppResource } from '@modelcontextprotocol/ext-apps/server';
+import { createUIResource } from '@mcp-ui/server';
+import { z } from 'zod';
+
+// 1. Create UI content
+const widgetUI = createUIResource({
+  uri: 'ui://my-server/widget',
+  content: { type: 'rawHtml', htmlString: '<h1>Widget</h1>' },
+  encoding: 'text',
+});
+
+// 2. Register resource handler
+registerAppResource(server, 'widget_ui', widgetUI.resource.uri, {}, async () => ({
+  contents: [widgetUI.resource]
+}));
+
+// 3. Register tool with _meta.ui.resourceUri
+registerAppTool(server, 'show_widget', {
+  description: 'Show widget',
+  inputSchema: { query: z.string() },
+  _meta: { ui: { resourceUri: widgetUI.resource.uri } }
+}, async ({ query }) => {
+  return { content: [{ type: 'text', text: `Query: ${query}` }] };
+});
+```
 
 ## Key Exports
 
 - **`createUIResource(options: CreateUIResourceOptions): UIResource`**:
-  The primary function for creating UI snippets. It takes an options object to define the URI, content (direct HTML or external URL), encoding method (text or blob), and metadata configuration.
+  Creates UI resource objects. Use with `registerAppTool` and `registerAppResource` from `@modelcontextprotocol/ext-apps/server`.
 
 ## Purpose
 
-- **Ease of Use**: Simplifies the creation of valid `UIResource` objects.
-- **Validation**: Includes basic validation (e.g., URI prefixes matching content type).
-- **Encoding**: Handles Base64 encoding when `encoding: 'blob'` is specified.
-- **Metadata Support**: Provides flexible metadata configuration for enhanced client-side rendering and resource management.
+- **MCP Apps Compliance**: Implements the MCP Apps standard for tool UIs
+- **Ease of Use**: Simplifies the creation of valid `UIResource` objects
+- **Validation**: Includes basic validation (e.g., URI prefixes matching content type)
+- **Encoding**: Handles Base64 encoding when `encoding: 'blob'` is specified
+- **Metadata Support**: Provides flexible metadata configuration for enhanced client-side rendering
 
 ## Metadata Features
 

@@ -29,9 +29,9 @@
 
 ----
 
-**`mcp-ui`** brings interactive web components to the [Model Context Protocol](https://modelcontextprotocol.io/introduction) (MCP). Deliver rich, dynamic UI resources directly from your MCP server to be rendered by the client. Take AI interaction to the next level!
+**`mcp-ui`** implements the [MCP Apps](https://github.com/modelcontextprotocol/ext-apps) standard, bringing interactive web components to the [Model Context Protocol](https://modelcontextprotocol.io/introduction) (MCP). Build tools with associated UIs using `_meta.ui.resourceUri` and render them with `AppRenderer`.
 
-> *This project is an experimental community playground for MCP UI ideas. Expect rapid iteration and enhancements!*
+> *The @mcp-ui/* packages are fully compliant with the MCP Apps specification and ready for production use.*
 
 <p align="center">
   <video src="https://github.com/user-attachments/assets/7180c822-2dd9-4f38-9d3e-b67679509483"></video>
@@ -39,89 +39,123 @@
 
 ## 💡 What's `mcp-ui`?
 
-`mcp-ui` is a playground for the open spec of UI over MCP. It offers a collection of community SDKs comprising:
+`mcp-ui` is an SDK implementing the [MCP Apps](https://github.com/modelcontextprotocol/ext-apps) standard for UI over MCP. It provides:
 
-* **`@mcp-ui/server` (TypeScript)**: Utilities to generate UI resources (`UIResource`) on your MCP server.
-* **`@mcp-ui/client` (TypeScript)**: UI components (e.g., `<UIResourceRenderer />`) to render the UI resources and handle their events.
-* **`mcp_ui_server` (Ruby)**: Utilities to generate UI resources on your MCP server in a Ruby environment.
-* **`mcp-ui-server` (Python)**: Utilities to generate UI resources on your MCP server in a Python environment.
+* **`@mcp-ui/server` (TypeScript)**: Create UI resources with `createUIResource`. Works with `registerAppTool` and `registerAppResource` from `@modelcontextprotocol/ext-apps/server`.
+* **`@mcp-ui/client` (TypeScript)**: Render tool UIs with `AppRenderer` (MCP Apps) or `UIResourceRenderer` (legacy MCP-UI hosts).
+* **`mcp_ui_server` (Ruby)**: Create UI resources in Ruby.
+* **`mcp-ui-server` (Python)**: Create UI resources in Python.
 
-Together, they let you define reusable UI snippets on the server side, seamlessly and securely render them in the client, and react to their actions in the MCP host environment.
+The MCP Apps pattern links tools to their UIs via `_meta.ui.resourceUri`. Hosts fetch and render the UI alongside tool results.
 
 ## ✨ Core Concepts
 
-In essence, by using `mcp-ui` SDKs, servers and hosts can agree on contracts that enable them to create and render interactive UI snippets (as a path to a standardized UI approach in MCP).
+### MCP Apps Pattern (Recommended)
 
-### UI Resource
-The primary payload returned from the server to the client is the `UIResource`:
+The MCP Apps standard links tools to their UIs via `_meta.ui.resourceUri`:
+
+```ts
+import { registerAppTool, registerAppResource } from '@modelcontextprotocol/ext-apps/server';
+import { createUIResource } from '@mcp-ui/server';
+
+// 1. Create UI resource
+const widgetUI = createUIResource({
+  uri: 'ui://my-server/widget',
+  content: { type: 'rawHtml', htmlString: '<h1>Widget</h1>' },
+  encoding: 'text',
+});
+
+// 2. Register resource handler
+registerAppResource(server, 'widget_ui', widgetUI.resource.uri, {}, async () => ({
+  contents: [widgetUI.resource]
+}));
+
+// 3. Register tool with _meta linking
+registerAppTool(server, 'show_widget', {
+  description: 'Show widget',
+  inputSchema: { query: z.string() },
+  _meta: { ui: { resourceUri: widgetUI.resource.uri } }  // Links tool → UI
+}, async ({ query }) => {
+  return { content: [{ type: 'text', text: `Query: ${query}` }] };
+});
+```
+
+Hosts detect `_meta.ui.resourceUri`, fetch the UI via `resources/read`, and render it with `AppRenderer`.
+
+### UIResource (Wire Format)
+
+The underlying payload for UI content:
 
 ```ts
 interface UIResource {
   type: 'resource';
   resource: {
     uri: string;       // e.g., ui://component/id
-    mimeType: 'text/html' | 'text/uri-list' | 'application/vnd.mcp-ui.remote-dom'; // text/html for HTML content, text/uri-list for URL content, application/vnd.mcp-ui.remote-dom for remote-dom content (Javascript)
+    mimeType: 'text/html' | 'text/uri-list' | 'application/vnd.mcp-ui.remote-dom';
     text?: string;      // Inline HTML, external URL, or remote-dom script
-    blob?: string;      // Base64-encoded HTML, URL, or remote-dom script
+    blob?: string;      // Base64-encoded content
   };
 }
 ```
 
-* **`uri`**: Unique identifier for caching and routing
-  * `ui://…` — UI resources (rendering method determined by mimeType)
-* **`mimeType`**: `text/html` for HTML content (iframe srcDoc), `text/uri-list` for URL content (iframe src), `application/vnd.mcp-ui.remote-dom` for remote-dom content (Javascript)
-  * **MCP-UI requires a single URL**: While `text/uri-list` format supports multiple URLs, MCP-UI uses only the first valid `http/s` URL and warns if additional URLs are found
-* **`text` vs. `blob`**: Choose `text` for simple strings; use `blob` for larger or encoded content.
+* **`uri`**: Unique identifier using `ui://` scheme
+* **`mimeType`**: `text/html` for HTML, `text/uri-list` for URLs, `text/html;profile=mcp-app` for MCP Apps
+* **`text` vs. `blob`**: Plain text or Base64-encoded content
 
-### Resource Renderer
+### Client Components
 
-The UI Resource is rendered in the `<UIResourceRenderer />` component. It automatically detects the resource type and renders the appropriate component.
+#### AppRenderer (MCP Apps)
 
-It is available as a React component and as a Web Component.
+For MCP Apps hosts, use `AppRenderer` to render tool UIs:
 
-**React Component**
+```tsx
+import { AppRenderer } from '@mcp-ui/client';
 
-It accepts the following props:
-- **`resource`**: The resource object from an MCP Tool response. It must include `uri`, `mimeType`, and content (`text`, `blob`)
-- **`onUIAction`**: Optional callback for handling UI actions from the resource:
-  ```typescript
-  { type: 'tool', payload: { toolName: string, params: Record<string, unknown> }, messageId?: string } |
-  { type: 'intent', payload: { intent: string, params: Record<string, unknown> }, messageId?: string } |
-  { type: 'prompt', payload: { prompt: string }, messageId?: string } |
-  { type: 'notify', payload: { message: string }, messageId?: string } |
-  { type: 'link', payload: { url: string }, messageId?: string }
-  ```
-  When actions include a `messageId`, the iframe automatically receives response messages for asynchronous handling.
-- **`supportedContentTypes`**: Optional array to restrict which content types are allowed (`['rawHtml', 'externalUrl', 'remoteDom']`)
-- **`htmlProps`**: Optional props for the internal `<HTMLResourceRenderer>`
-  - **`style`**: Optional custom styles for the iframe
-  - **`iframeProps`**: Optional props passed to the iframe element
-  - **`iframeRenderData`**: Optional `Record<string, unknown>` to pass data to the iframe upon rendering. This enables advanced use cases where the parent application needs to provide initial state or configuration to the sandboxed iframe content.
-  - **`autoResizeIframe`**: Optional `boolean | { width?: boolean; height?: boolean }` to automatically resize the iframe to the size of the content.
-- **`remoteDomProps`**: Optional props for the internal `<RemoteDOMResourceRenderer>`
-  - **`library`**: Optional component library for Remote DOM resources (defaults to `basicComponentLibrary`)
-  - **`remoteElements`**: remote element definitions for Remote DOM resources.
+function ToolUI({ client, toolName, toolInput, toolResult }) {
+  return (
+    <AppRenderer
+      client={client}
+      toolName={toolName}
+      sandbox={{ url: sandboxUrl }}
+      toolInput={toolInput}
+      toolResult={toolResult}
+      onOpenLink={async ({ url }) => window.open(url)}
+      onMessage={async (params) => console.log('Message:', params)}
+    />
+  );
+}
+```
 
-**Web Component**
+Key props:
+- **`client`**: Optional MCP client for automatic resource fetching
+- **`toolName`**: Tool name to render UI for
+- **`sandbox`**: Sandbox configuration with proxy URL
+- **`toolInput`** / **`toolResult`**: Tool arguments and results
+- **`onOpenLink`** / **`onMessage`**: Handlers for UI requests
 
-The Web Component is available as `<ui-resource-renderer>`. It accepts the same props as the React component, but they must be passed as strings.
+#### UIResourceRenderer (Legacy MCP-UI)
 
-Example:
+For legacy hosts that embed resources in tool responses:
+
+```tsx
+import { UIResourceRenderer } from '@mcp-ui/client';
+
+<UIResourceRenderer
+  resource={mcpResource.resource}
+  onUIAction={(action) => console.log('Action:', action)}
+/>
+```
+
+Props:
+- **`resource`**: Resource object with `uri`, `mimeType`, and content (`text`/`blob`)
+- **`onUIAction`**: Callback for handling tool, prompt, link, notify, and intent actions
+
+Also available as a Web Component:
 ```html
 <ui-resource-renderer
-  resource='{ "mimeType": "text/html", "text": "<h2>Hello from the Web Component!</h2>" }'
+  resource='{ "mimeType": "text/html", "text": "<h2>Hello!</h2>" }'
 ></ui-resource-renderer>
 ```
-
-The `onUIAction` prop can be handled by attaching an event listener to the component:
-```javascript
-const renderer = document.querySelector('ui-resource-renderer');
-renderer.addEventListener('onUIAction', (event) => {
-  console.log('Action:', event.detail);
-});
-```
-
-The Web Component is available in the `@mcp-ui/client` package at `dist/ui-resource-renderer.wc.js`.
 
 ### Supported Resource Types
 
@@ -252,75 +286,73 @@ uv add mcp-ui-server
 
 ## 🚀 Getting Started
 
-You can use [GitMCP](https://gitmcp.io/idosal/mcp-ui) to give your IDE access to `mcp-ui`'s latest documentation! 
+You can use [GitMCP](https://gitmcp.io/idosal/mcp-ui) to give your IDE access to `mcp-ui`'s latest documentation!
 
-### TypeScript
+### TypeScript (MCP Apps Pattern)
 
-1. **Server-side**: Build your UI resources
+1. **Server-side**: Create a tool with UI using `_meta.ui.resourceUri`
 
    ```ts
+   import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
+   import { registerAppTool, registerAppResource } from '@modelcontextprotocol/ext-apps/server';
    import { createUIResource } from '@mcp-ui/server';
-   import {
-    createRemoteComponent,
-    createRemoteDocument,
-    createRemoteText,
-   } from '@remote-dom/core';
+   import { z } from 'zod';
 
-   // Inline HTML
-   const htmlResource = createUIResource({
-     uri: 'ui://greeting/1',
-     content: { type: 'rawHtml', htmlString: '<p>Hello, MCP UI!</p>' },
+   const server = new McpServer({ name: 'my-server', version: '1.0.0' });
+
+   // Create UI resource
+   const widgetUI = createUIResource({
+     uri: 'ui://my-server/widget',
+     content: { type: 'rawHtml', htmlString: '<h1>Interactive Widget</h1>' },
      encoding: 'text',
    });
 
-   // External URL
-   const externalUrlResource = createUIResource({
-     uri: 'ui://greeting/1',
-     content: { type: 'externalUrl', iframeUrl: 'https://example.com' },
-     encoding: 'text',
-   });
+   // Register resource handler
+   registerAppResource(server, 'widget_ui', widgetUI.resource.uri, {}, async () => ({
+     contents: [widgetUI.resource]
+   }));
 
-   // remote-dom
-   const remoteDomResource = createUIResource({
-     uri: 'ui://remote-component/action-button',
-     content: {
-       type: 'remoteDom',
-       script: `
-        const button = document.createElement('ui-button');
-        button.setAttribute('label', 'Click me for a tool call!');
-        button.addEventListener('press', () => {
-          window.parent.postMessage({ type: 'tool', payload: { toolName: 'uiInteraction', params: { action: 'button-click', from: 'remote-dom' } } }, '*');
-        });
-        root.appendChild(button);
-        `,
-       framework: 'react', // or 'webcomponents'
-     },
-     encoding: 'text',
+   // Register tool with _meta linking
+   registerAppTool(server, 'show_widget', {
+     description: 'Show widget',
+     inputSchema: { query: z.string() },
+     _meta: { ui: { resourceUri: widgetUI.resource.uri } }
+   }, async ({ query }) => {
+     return { content: [{ type: 'text', text: `Query: ${query}` }] };
    });
    ```
 
-2. **Client-side**: Render in your MCP host
+2. **Client-side**: Render tool UIs with `AppRenderer`
 
    ```tsx
-   import React from 'react';
+   import { AppRenderer } from '@mcp-ui/client';
+
+   function ToolUI({ client, toolName, toolInput, toolResult }) {
+     return (
+       <AppRenderer
+         client={client}
+         toolName={toolName}
+         sandbox={{ url: sandboxUrl }}
+         toolInput={toolInput}
+         toolResult={toolResult}
+         onOpenLink={async ({ url }) => window.open(url)}
+         onMessage={async (params) => console.log('Message:', params)}
+       />
+     );
+   }
+   ```
+
+### Legacy MCP-UI Pattern
+
+For hosts that don't support MCP Apps yet:
+
+   ```tsx
    import { UIResourceRenderer } from '@mcp-ui/client';
 
-   function App({ mcpResource }) {
-     if (
-       mcpResource.type === 'resource' &&
-       mcpResource.resource.uri?.startsWith('ui://')
-     ) {
-       return (
-         <UIResourceRenderer
-           resource={mcpResource.resource}
-           onUIAction={(result) => {
-             console.log('Action:', result);
-           }}
-         />
-       );
-     }
-     return <p>Unsupported resource</p>;
-   }
+   <UIResourceRenderer
+     resource={mcpResource.resource}
+     onUIAction={(action) => console.log('Action:', action)}
+   />
    ```
 
 ### Python

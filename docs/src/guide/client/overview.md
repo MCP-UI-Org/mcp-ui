@@ -1,24 +1,63 @@
 # @mcp-ui/client Overview
 
-The `@mcp-ui/client` package helps you render UI resources sent from an MCP-enabled server. The primary component for this is `<UIResourceRenderer />`, which automatically detects the resource type and renders the appropriate component for it.
+The `@mcp-ui/client` package provides components for rendering MCP tool UIs in your host application. It supports both MCP Apps (the standard) and legacy MCP-UI hosts.
 
 ## What's Included?
 
-### Components
-- **`<UIResourceRenderer />`**: The main component you'll use. It inspects the resource's `mimeType` and renders either `<HTMLResourceRenderer />` or `<RemoteDOMResourceRenderer />` internally.
+### MCP Apps Components (Recommended)
+- **`<AppRenderer />`**: High-level component for MCP Apps hosts. Fetches resources, handles lifecycle, renders tool UIs.
+- **`<AppFrame />`**: Lower-level component for when you have pre-fetched HTML and an AppBridge instance.
+- **`AppBridge`**: Handles JSON-RPC communication between host and guest UI.
+
+### Legacy MCP-UI Components
+- **`<UIResourceRenderer />`**: For legacy hosts that embed resources in tool responses. Inspects `mimeType` and renders `<HTMLResourceRenderer />` or `<RemoteDOMResourceRenderer />` internally.
 - **`<HTMLResourceRenderer />`**: Internal component for HTML/URL resources
 - **`<RemoteDOMResourceRenderer />`**: Internal component for remote DOM resources
-- **`isUIResource()`**: Utility function to check if content is a UI resource (replaces manual `content.type === 'resource' && content.resource.uri?.startsWith('ui://')` checks)
+- **`isUIResource()`**: Utility function to check if content is a UI resource
 
 ### Utility Functions
 - **`getResourceMetadata(resource)`**: Extracts the resource's `_meta` content (standard MCP metadata)
 - **`getUIResourceMetadata(resource)`**: Extracts only the MCP-UI specific metadata keys (prefixed with `mcpui.dev/ui-`) from the resource's `_meta` content
+- **`UI_EXTENSION_CAPABILITIES`**: Declares UI extension support for your MCP client
 
 ## Purpose
-- **Standardized UI**: mcp-ui's client guarantees full compatibility with the latest MCP UI standards.
-- **Simplified Rendering**: Abstract away the complexities of handling different resource types.
-- **Security**: Renders user-provided HTML and scripts within sandboxed iframes.
-- **Interactivity**: Provides a unified mechanism (`onUIAction` prop) for UI resources to communicate back to the host application.
+- **MCP Apps Compliance**: Implements the MCP Apps standard for UI over MCP
+- **Simplified Rendering**: AppRenderer handles resource fetching, lifecycle, and rendering automatically
+- **Security**: All UIs render in sandboxed iframes
+- **Interactivity**: JSON-RPC communication between host and guest UI
+
+## Quick Example: AppRenderer
+
+For MCP Apps hosts (recommended):
+
+```tsx
+import { AppRenderer } from '@mcp-ui/client';
+
+function ToolUI({ client, toolName, toolInput, toolResult }) {
+  return (
+    <AppRenderer
+      client={client}
+      toolName={toolName}
+      sandbox={{ url: sandboxUrl }}
+      toolInput={toolInput}
+      toolResult={toolResult}
+      onOpenLink={async ({ url }) => window.open(url)}
+      onMessage={async (params) => console.log('Message:', params)}
+    />
+  );
+}
+```
+
+For legacy MCP-UI hosts:
+
+```tsx
+import { UIResourceRenderer } from '@mcp-ui/client';
+
+<UIResourceRenderer
+  resource={mcpResource.resource}
+  onUIAction={(action) => console.log('Action:', action)}
+/>
+```
 
 ## Building
 
@@ -120,7 +159,8 @@ function SmartResourceRenderer({ resource }) {
 
 See the following pages for more details:
 
-- [UIResourceRenderer Component](./resource-renderer.md) - **Main entry point**
+- [Client SDK Walkthrough](./walkthrough.md) - **Step-by-step guide to building an MCP Apps client**
+- [UIResourceRenderer Component](./resource-renderer.md) - Legacy MCP-UI renderer
 - [HTMLResourceRenderer Component](./html-resource.md)
 - [RemoteDOMResourceRenderer Component](./remote-dom-resource.md)
 - [React Usage & Examples](./react-usage-examples.md)

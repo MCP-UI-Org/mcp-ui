@@ -1,5 +1,11 @@
 # Embeddable UI
 
+::: tip MCP Apps Standard
+This page documents the **legacy MCP-UI `postMessage` protocol** for embedded iframes. For MCP Apps hosts, see the [MCP Apps JSON-RPC protocol](./protocol-details#mcp-apps-protocol) instead.
+
+For new apps, we recommend using the MCP Apps pattern with `_meta.ui.resourceUri`. See [Getting Started](./getting-started).
+:::
+
 > This document describes the general communication protocol for any embeddable UIs.
 > This is implemented by the mcp-ui iframe based solution, in the context of UI over MCP.
 

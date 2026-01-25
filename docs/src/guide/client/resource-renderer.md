@@ -1,6 +1,12 @@
 # UIResourceRenderer Component
 
-The `UIResourceRenderer` component is the **main entry point** for rendering MCP-UI resources in your application. It automatically detects the resource type and renders the appropriate component internally.
+::: tip For MCP Apps Hosts
+If your host supports MCP Apps (the standard), use [`AppRenderer`](../mcp-apps#apprenderer-component) instead. It fetches resources, handles the lifecycle, and provides a complete MCP Apps experience.
+
+`UIResourceRenderer` is for **legacy MCP-UI hosts** that embed UI resources directly in tool responses.
+:::
+
+The `UIResourceRenderer` component renders MCP-UI resources embedded in tool responses. It automatically detects the resource type and renders the appropriate component internally.
 It is available as a React component and as a Web Component.
 
 ## React Component

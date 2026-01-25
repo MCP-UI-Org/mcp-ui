@@ -4,15 +4,79 @@ This page provides practical examples for using the `@mcp-ui/server` package.
 
 For a complete example, see the [`typescript-server-demo`](https://github.com/idosal/mcp-ui/tree/docs/ts-example/examples/typescript-server-demo).
 
-## Basic Setup
-
-First, ensure you have `@mcp-ui/server` available in your project:
+## Installation
 
 ```bash
-npm i @mcp-ui/server
+npm i @mcp-ui/server @modelcontextprotocol/ext-apps
 ```
 
-## Basic Usage
+## MCP Apps Pattern (Recommended)
+
+The MCP Apps pattern uses `registerAppTool` with `_meta.ui.resourceUri` to link tools to their UIs:
+
+```typescript
+import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
+import { registerAppTool, registerAppResource } from '@modelcontextprotocol/ext-apps/server';
+import { createUIResource } from '@mcp-ui/server';
+import { z } from 'zod';
+
+const server = new McpServer({ name: 'my-server', version: '1.0.0' });
+
+// Create UI resource
+const widgetUI = createUIResource({
+  uri: 'ui://my-server/widget',
+  content: {
+    type: 'rawHtml',
+    htmlString: `
+      <html>
+        <body>
+          <h1>Interactive Widget</h1>
+          <button onclick="sendMessage()">Send Message</button>
+          <script>
+            window.addEventListener('message', (e) => {
+              if (e.data.type === 'ui-lifecycle-iframe-render-data') {
+                console.log('Tool data:', e.data.payload.renderData);
+              }
+            });
+            function sendMessage() {
+              window.parent.postMessage({
+                type: 'prompt',
+                payload: { prompt: 'Tell me more' }
+              }, '*');
+            }
+            window.parent.postMessage({ type: 'ui-lifecycle-iframe-ready' }, '*');
+          </script>
+        </body>
+      </html>
+    `,
+  },
+  encoding: 'text',
+});
+
+// Register resource handler
+registerAppResource(server, 'widget_ui', widgetUI.resource.uri, {}, async () => ({
+  contents: [widgetUI.resource]
+}));
+
+// Register tool with _meta.ui.resourceUri
+registerAppTool(server, 'show_widget', {
+  description: 'Show an interactive widget',
+  inputSchema: {
+    query: z.string().describe('User query'),
+  },
+  _meta: {
+    ui: {
+      resourceUri: widgetUI.resource.uri  // Links tool to UI
+    }
+  }
+}, async ({ query }) => {
+  return {
+    content: [{ type: 'text', text: `Processing: ${query}` }]
+  };
+});
+```
+
+## Creating UI Resources
 
 The core function is `createUIResource`.
 

@@ -1,12 +1,22 @@
-# MCP Apps Integration
+# Legacy MCP-UI Adapter
 
-The MCP Apps adapter in `@mcp-ui/server` enables your MCP-UI HTML widget to run inside MCP Apps-compliant hosts that implement the [MCP Apps SEP protocol](https://github.com/modelcontextprotocol/ext-apps). This guide walks you through the integration process.
+::: tip For New Apps
+**Building a new app?** Use the MCP Apps patterns directly - see [Getting Started](./getting-started) for the recommended approach with `registerAppTool`, `_meta.ui.resourceUri`, and `AppRenderer`.
+
+This page is for **migrating existing MCP-UI widgets** to work in MCP Apps hosts.
+:::
+
+The MCP Apps adapter in `@mcp-ui/server` enables **existing MCP-UI HTML widgets** to run inside MCP Apps-compliant hosts. This is a backward-compatibility layer for apps that were built using the legacy MCP-UI `postMessage` protocol.
+
+## When to Use This Adapter
+
+- **Existing MCP-UI widgets**: You have HTML widgets using the `ui-lifecycle-*` message format
+- **Gradual migration**: You want your existing widgets to work in both legacy MCP-UI hosts and new MCP Apps hosts
+- **Protocol translation**: Your widget uses `postMessage` calls that need to be translated to JSON-RPC
 
 ## Overview
 
-MCP-UI has been standardized into MCP Apps. There were changes in the messaging protocol that will break existing MCP-UI apps (e.g., event names, JSON-RPC format, etc.) The adapter automatically translates the MCP-UI protocol to MCP Apps SEP, allowing you to maintain compatibility with both MCP-UI and MCP Apps hosts.
-
-With this adapter, your MCP-UI apps will work in both legacy MCP-UI hosts and new MCP Apps hosts out-of-the-box, allowing for a smooth migration. MCP-UI's server SDK will soon support MCP Apps directly.
+The adapter automatically translates between the MCP-UI `postMessage` protocol and MCP Apps JSON-RPC, allowing your existing widgets to work in MCP Apps hosts without code changes.
 
 ## How It Works
 
@@ -590,8 +600,9 @@ This tells MCP servers that your client can render UI resources with MIME type `
 
 ## Related Resources
 
+- [Getting Started](./getting-started) - Recommended patterns for new MCP Apps
 - [MCP Apps SEP Specification](https://github.com/modelcontextprotocol/ext-apps/blob/main/specification/draft/apps.mdx)
 - [@modelcontextprotocol/ext-apps](https://github.com/modelcontextprotocol/ext-apps)
-- [Apps SDK Integration](./apps-sdk.md) - For ChatGPT integration
-- [Protocol Details](./protocol-details.md) - MCP-UI protocol reference
+- [Apps SDK Integration](./apps-sdk.md) - For ChatGPT integration (separate from MCP Apps)
+- [Protocol Details](./protocol-details.md) - MCP-UI wire format reference
 

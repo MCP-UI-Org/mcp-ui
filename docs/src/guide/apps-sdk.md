@@ -1,5 +1,12 @@
 # OpenAI Apps SDK Integration
 
+::: warning ChatGPT-Specific
+This page covers the **OpenAI Apps SDK** adapter for **ChatGPT** integration. This is separate from the **MCP Apps** standard.
+
+- **MCP Apps**: The open standard for tool UIs (`_meta.ui.resourceUri`) - see [Getting Started](./getting-started)
+- **Apps SDK**: ChatGPT's proprietary protocol (`openai/outputTemplate`) - covered on this page
+:::
+
 The Apps SDK adapter in `@mcp-ui/server` enables your MCP-UI HTML widget to run inside ChatGPT. However, for now, you still need to manually serve the resource according to the Apps SDK spec. This guide walks through the manual flow the adapter expects today to support both MCP-UI hosts and ChatGPT.
 
 ## Why two resources?

@@ -2,6 +2,12 @@
 
 The `mcp-ui-server` package provides utilities to generate UI resources (`UIResource`) on your MCP server. It allows you to define UI snippets on the server-side, which can then be seamlessly and securely rendered on the client.
 
+::: tip MCP Apps Compatibility
+The `create_ui_resource` function creates UIResource objects that work with both MCP Apps hosts (via `_meta.ui.resourceUri`) and legacy MCP-UI hosts.
+
+For the recommended MCP Apps pattern with TypeScript, see [Getting Started](../../getting-started).
+:::
+
 For a complete example, see the [`python-server-demo`](https://github.com/idosal/mcp-ui/tree/main/examples/python-server-demo).
 
 ## Key Exports

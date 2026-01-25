@@ -2,6 +2,12 @@
 
 The `mcp_ui_server` gem provides server-side utilities in Ruby to help construct `UIResource` objects, which can then be sent to a client as part of an MCP response.
 
+::: tip MCP Apps Compatibility
+The `create_ui_resource` method creates UIResource objects that work with both MCP Apps hosts (via `_meta.ui.resourceUri`) and legacy MCP-UI hosts.
+
+For the recommended MCP Apps pattern with TypeScript, see [Getting Started](../../getting-started).
+:::
+
 ## Key Methods
 
 - **`McpUiServer.create_ui_resource(options)`**:

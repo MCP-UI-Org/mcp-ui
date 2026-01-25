@@ -1,8 +1,60 @@
 # Protocol Details
 
-This section dives deeper into the `UIResource` and its intended usage.
+This section covers the wire protocols for MCP Apps and legacy MCP-UI.
 
-## `UIResource` Recap
+## MCP Apps Protocol
+
+MCP Apps uses JSON-RPC over `postMessage` for communication between host and guest UI.
+
+### Tool → UI Linking
+
+Tools declare their associated UI via `_meta.ui.resourceUri`:
+
+```typescript
+// Tool definition
+{
+  name: 'show_widget',
+  description: 'Show an interactive widget',
+  inputSchema: { ... },
+  _meta: {
+    ui: {
+      resourceUri: 'ui://my-server/widget'  // Points to registered resource
+    }
+  }
+}
+```
+
+### Host → Guest Communication
+
+The host sends JSON-RPC notifications to the guest UI:
+
+| Notification | Description |
+|-------------|-------------|
+| `ui/notifications/tool-input` | Complete tool arguments |
+| `ui/notifications/tool-input-partial` | Streaming partial arguments |
+| `ui/notifications/tool-result` | Tool execution result |
+| `ui/notifications/host-context-changed` | Theme, locale, viewport changes |
+| `ui/notifications/size-changed` | Host informs of size constraints |
+| `ui/notifications/tool-cancelled` | Tool execution was cancelled |
+| `ui/resource-teardown` | Host notifies UI before teardown |
+
+### Guest → Host Communication
+
+The guest UI sends JSON-RPC requests to the host:
+
+| Method | Description |
+|--------|-------------|
+| `tools/call` | Call another MCP tool |
+| `ui/message` | Send a follow-up message to the conversation |
+| `ui/open-link` | Open a URL in a new tab |
+| `notifications/message` | Log a message to the host |
+| `ui/notifications/size-changed` | Request widget resize |
+
+### MIME Type
+
+MCP Apps resources use `text/html;profile=mcp-app` to indicate MCP Apps compliance.
+
+## UIResource Wire Format
 
 ```typescript
 export interface UIResource {

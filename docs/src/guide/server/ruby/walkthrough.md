@@ -138,7 +138,7 @@ To test your new endpoint, you can use the [`ui-inspector`](https://github.com/i
 1. Go to the [ui-inspector repo](https://github.com/idosal/ui-inspector/) and run locally.
 2. Open the local client in a browser (usually `http://localhost:6274`)
 3. Change the Transport Type to "Streamable HTTP".
-4. Enter your server's MCP endpoint URL: `http://localhost:3000/mcp`.
+4. Enter your server's MCP endpoint URL: `http://localhost:8081/mcp`.
 5. Click "Connect".
 
 The inspector will show tools for the different content types. When you call them, the UI resource will be rendered in the inspector's Tool Results.
