@@ -453,24 +453,43 @@ Drop those URLs into any MCP-compatible host to see `mcp-ui` in action. For a su
 
 ## 💻 Supported Hosts
 
-`mcp-ui` is supported by a growing number of MCP-compatible clients. Feature support varies by host:
+The `@mcp-ui/*` packages work with both MCP Apps hosts and legacy MCP-UI hosts.
 
-| Host      | Rendering | UI Actions | Notes
-| :-------- | :-------: | :--------: | :--------: |
-| [Nanobot](https://www.nanobot.ai/)    |     ✅    |     ✅     |
-| [ChatGPT](https://chatgpt.com/)    |     ✅    |     ⚠️     | [Guide](https://mcpui.dev/guide/apps-sdk)
-| [Postman](https://www.postman.com/)   |     ✅    |     ⚠️      |
-| [Goose](https://block.github.io/goose/)     |     ✅    |     ⚠️      |
-| [LibreChat](https://www.librechat.ai/)    |     ✅    |     ⚠️     |
-| [Smithery](https://smithery.ai/playground)  |     ✅    |     ❌     |
-| [MCPJam](https://www.mcpjam.com/)    |     ✅    |     ✅      |
-| [fast-agent](https://fast-agent.ai/mcp/mcp-ui/) | ✅ | ❌ |
-| [VSCode](https://github.com/microsoft/vscode/issues/260218) (TBA)    |    ?    |    ?     |
+### MCP Apps Hosts
 
-**Legend:**
-- ✅: Supported
-- ⚠️: Partial Support
-- ❌: Not Supported (yet)
+These hosts implement the [MCP Apps specification](https://github.com/modelcontextprotocol/ext-apps) and support tools with `_meta.ui.resourceUri`:
+
+| Host | Notes |
+| :--- | :---- |
+| [VSCode](https://github.com/microsoft/vscode/issues/260218) | Internals (as of January) |
+| [Postman](https://www.postman.com/) | |
+| [Goose](https://block.github.io/goose/) | |
+| [MCPJam](https://www.mcpjam.com/) | |
+| [LibreChat](https://www.librechat.ai/) | |
+| [mcp-use](https://mcp-use.com/) | |
+| [Smithery](https://smithery.ai/playground) | |
+
+### Legacy MCP-UI Hosts
+
+These hosts expect UI resources embedded directly in tool responses:
+
+| Host | Rendering | UI Actions | Notes |
+| :--- | :-------: | :--------: | :---- |
+| [Nanobot](https://www.nanobot.ai/) | ✅ | ✅ |
+| [MCPJam](https://www.mcpjam.com/) | ✅ | ✅ |
+| [Postman](https://www.postman.com/) | ✅ | ⚠️ | |
+| [Goose](https://block.github.io/goose/) | ✅ | ⚠️ | |
+| [LibreChat](https://www.librechat.ai/) | ✅ | ⚠️ | |
+| [Smithery](https://smithery.ai/playground) | ✅ | ❌ | |
+| [fast-agent](https://fast-agent.ai/mcp/mcp-ui/) | ✅ | ❌ | |
+
+### Hosts Requiring Adapters
+
+| Host | Protocol | Notes |
+| :--- | :------: | :---- |
+| [ChatGPT](https://chatgpt.com/) | Apps SDK | [Guide](https://mcpui.dev/guide/apps-sdk) |
+
+**Legend:** ✅ Supported · ⚠️ Partial · ❌ Not yet supported
 
 ## 🔒 Security
 Host and user security is one of `mcp-ui`'s primary concerns. In all content types, the remote code is executed in a sandboxed iframe.

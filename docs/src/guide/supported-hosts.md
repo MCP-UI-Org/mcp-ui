@@ -6,11 +6,15 @@ The `@mcp-ui/*` packages work with both MCP Apps hosts and legacy MCP-UI hosts.
 
 These hosts implement the [MCP Apps SEP protocol](https://github.com/modelcontextprotocol/ext-apps) and support tools with `_meta.ui.resourceUri`:
 
-| Host | Rendering | UI Actions | Notes |
-| :--- | :-------: | :--------: | :---- |
-| MCP Apps SEP Hosts | ✅ | ✅ | Full MCP Apps support |
-| [Nanobot](https://www.nanobot.ai/) | ✅ | ✅ | |
-| [MCPJam](https://www.mcpjam.com/) | ✅ | ✅ | |
+| Host | Support | Notes |
+| :--- | :-------: | :---- |
+| [VSCode](https://github.com/microsoft/vscode/issues/260218) | ✅ | Internals (as of January) |
+| [Postman](https://www.postman.com/) | ✅ | |
+| [Goose](https://block.github.io/goose/) | ✅ | |
+| [MCPJam](https://www.mcpjam.com/) | ✅ | |
+| [LibreChat](https://www.librechat.ai/) | ✅ | |
+| [mcp-use](https://mcp-use.com/) | ✅ | |
+| [Smithery](https://smithery.ai/playground) | ✅ | |
 
 For MCP Apps hosts, use `AppRenderer` on the client side:
 
@@ -30,14 +34,15 @@ import { AppRenderer } from '@mcp-ui/client';
 
 These hosts expect UI resources embedded directly in tool responses:
 
-| Host | Rendering | UI Actions | Notes |
+| Host | Rendering |  | Notes |
 | :--- | :-------: | :--------: | :---- |
+| [Nanobot](https://www.nanobot.ai/) | ✅ | ✅ |
+| [MCPJam](https://www.mcpjam.com/) | ✅ | ✅ |
 | [Postman](https://www.postman.com/) | ✅ | ⚠️ | |
 | [Goose](https://block.github.io/goose/) | ✅ | ⚠️ | |
 | [LibreChat](https://www.librechat.ai/) | ✅ | ⚠️ | |
 | [Smithery](https://smithery.ai/playground) | ✅ | ❌ | |
 | [fast-agent](https://fast-agent.ai/mcp/mcp-ui/) | ✅ | ❌ | |
-| [VSCode](https://github.com/microsoft/vscode/issues/260218) (TBA) | ? | ? | |
 
 For legacy hosts, use `UIResourceRenderer` on the client side:
 
