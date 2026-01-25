@@ -7,6 +7,12 @@ The `@mcp-ui/*` packages provide tools for building [MCP Apps](https://github.co
 You can use [GitMCP](https://gitmcp.io/idosal/mcp-ui) to give your IDE access to `mcp-ui`'s latest documentation!
 <a href="https://gitmcp.io/idosal/mcp-ui"><img src="https://img.shields.io/endpoint?url=https://gitmcp.io/badge/idosal/mcp-ui" alt="MCP Documentation"></a>
 
+## Background
+
+MCP-UI pioneered the concept of interactive UI over the Model Context Protocol. Before MCP Apps existed as a standard, this project demonstrated how MCP tools could return rich, interactive HTML interfaces instead of plain text, enabling UI components within AI applications.
+
+The patterns and ideas explored in MCP-UI directly influenced the development of the [MCP Apps specification](https://github.com/modelcontextprotocol/ext-apps), which standardized UI delivery over MCP. Today, the `@mcp-ui/*` packages implement this standard while maintaining the project's original vision: making it simple to build beautiful, interactive experiences for AI tools.
+
 ## What are MCP Apps?
 
 MCP Apps is a standard for attaching interactive UIs to MCP tools. When a tool has an associated UI, hosts can render it alongside the tool's results, enabling rich user experiences like forms, charts, and interactive widgets.

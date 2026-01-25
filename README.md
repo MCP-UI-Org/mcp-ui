@@ -29,7 +29,9 @@
 
 ----
 
-**`mcp-ui`** implements the [MCP Apps](https://github.com/modelcontextprotocol/ext-apps) standard, bringing interactive web components to the [Model Context Protocol](https://modelcontextprotocol.io/introduction) (MCP). Build tools with associated UIs using `_meta.ui.resourceUri` and render them with `AppRenderer`.
+**`mcp-ui`** pioneered the concept of interactive UI over [MCP](https://modelcontextprotocol.io/introduction), enabling rich web interfaces for AI tools. Alongside Apps SDK, the patterns developed here directly influenced the [MCP Apps](https://github.com/modelcontextprotocol/ext-apps) specification, which standardized UI delivery over the protocol.
+
+The `@mcp-ui/*` packages implement the MCP Apps standard. `@mcp-ui/client` is the recommended SDK for MCP Apps Hosts.
 
 > *The @mcp-ui/* packages are fully compliant with the MCP Apps specification and ready for production use.*
 

@@ -48,6 +48,26 @@ features:
 
 ## Quick Example
 
+**Client Side** - Render tool UIs with `AppRenderer`:
+
+```tsx
+import { AppRenderer } from '@mcp-ui/client';
+
+function ToolUI({ client, toolName, toolInput, toolResult }) {
+  return (
+    <AppRenderer
+      client={client}
+      toolName={toolName}
+      sandbox={{ url: sandboxUrl }}
+      toolInput={toolInput}
+      toolResult={toolResult}
+      onOpenLink={async ({ url }) => window.open(url)}
+      onMessage={async (params) => console.log('Message:', params)}
+    />
+  );
+}
+```
+
 **Server Side** - Create a tool with an interactive UI using `_meta.ui.resourceUri`:
 
 ```typescript
@@ -78,26 +98,6 @@ registerAppTool(server, 'show_widget', {
 }, async ({ query }) => {
   return { content: [{ type: 'text', text: `Query: ${query}` }] };
 });
-```
-
-**Client Side** - Render tool UIs with `AppRenderer`:
-
-```tsx
-import { AppRenderer } from '@mcp-ui/client';
-
-function ToolUI({ client, toolName, toolInput, toolResult }) {
-  return (
-    <AppRenderer
-      client={client}
-      toolName={toolName}
-      sandbox={{ url: sandboxUrl }}
-      toolInput={toolInput}
-      toolResult={toolResult}
-      onOpenLink={async ({ url }) => window.open(url)}
-      onMessage={async (params) => console.log('Message:', params)}
-    />
-  );
-}
 ```
 
 ::: tip Legacy MCP-UI Support
