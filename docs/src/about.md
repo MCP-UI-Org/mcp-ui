@@ -13,7 +13,7 @@ Today, `mcp-ui` implements the MCP Apps standard while continuing to push the bo
 - **Client SDK** with React components for rendering tool UIs securely
 - **Server SDKs** for TypeScript, Python, and Ruby to create UI resources
 - **Documentation and examples** to help you get started quickly
-- **Active community** pushing the MCP Apps standard foward
+- **Active community** pushing the MCP Apps standard forward
 
 ## Team
 
