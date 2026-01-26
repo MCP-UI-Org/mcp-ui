@@ -2,7 +2,7 @@ export { UIResourceRenderer } from './components/UIResourceRenderer';
 export { getUIResourceMetadata, getResourceMetadata } from './utils/metadataUtils';
 export { isUIResource } from './utils/isUIResource';
 
-// Client capabilities for UI extension support (SEP-1724)
+// Client capabilities for UI extension support
 export {
   type ClientCapabilitiesWithExtensions,
   UI_EXTENSION_NAME,
