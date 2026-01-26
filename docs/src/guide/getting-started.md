@@ -48,7 +48,7 @@ import { z } from 'zod';
 // 1. Create your MCP server
 const server = new McpServer({ name: 'my-server', version: '1.0.0' });
 
-// 2. Create the UI resource
+// 2. Create the UI resource with interactive HTML
 const widgetUI = createUIResource({
   uri: 'ui://my-server/widget',
   content: {
@@ -58,24 +58,29 @@ const widgetUI = createUIResource({
         <body>
           <h1>Interactive Widget</h1>
           <button onclick="sendMessage()">Send Message</button>
-          <script>
-            // Listen for tool data
-            window.addEventListener('message', (e) => {
-              if (e.data.type === 'ui-lifecycle-iframe-render-data') {
-                console.log('Tool data:', e.data.payload.renderData);
-              }
-            });
+          <div id="status">Ready</div>
+          <script type="module">
+            import { App } from 'https://esm.sh/@modelcontextprotocol/ext-apps';
 
-            // Send a prompt to the conversation
-            function sendMessage() {
-              window.parent.postMessage({
-                type: 'prompt',
-                payload: { prompt: 'Tell me more about this widget' }
-              }, '*');
-            }
+            // Initialize the MCP Apps client
+            const app = new App({ name: 'widget', version: '1.0.0' });
 
-            // Signal ready
-            window.parent.postMessage({ type: 'ui-lifecycle-iframe-ready' }, '*');
+            // Listen for tool input
+            app.ontoolinput = (params) => {
+              document.getElementById('status').textContent =
+                'Received: ' + JSON.stringify(params.input);
+            };
+
+            // Send a message to the conversation
+            window.sendMessage = async () => {
+              await app.sendMessage({
+                role: 'user',
+                content: [{ type: 'text', text: 'Tell me more about this widget' }]
+              });
+            };
+
+            // Connect to the host
+            await app.connect();
           </script>
         </body>
       </html>
@@ -117,6 +122,12 @@ registerAppTool(
   }
 );
 ```
+
+::: tip MCP Apps Protocol
+The example above uses the [`@modelcontextprotocol/ext-apps`](https://github.com/modelcontextprotocol/ext-apps) `App` class for communication. This is the recommended approach for MCP Apps hosts. See [Protocol Details](./protocol-details) for the full JSON-RPC API.
+
+For legacy MCP-UI hosts, you can use the simpler postMessage protocol with the [MCP Apps Adapter](./mcp-apps).
+:::
 
 ### Client Side
 
@@ -207,31 +218,9 @@ const urlResource = createUIResource({
 });
 ```
 
-### 3. Remote DOM (`application/vnd.mcp-ui.remote-dom`)
-
-JavaScript-defined UI using host-native components:
-
-```typescript
-const remoteDomResource = createUIResource({
-  uri: 'ui://my-tool/remote',
-  content: {
-    type: 'remoteDom',
-    script: `
-      const button = document.createElement('ui-button');
-      button.setAttribute('label', 'Click me!');
-      button.addEventListener('press', () => {
-        window.parent.postMessage({
-          type: 'tool',
-          payload: { toolName: 'handleClick', params: {} }
-        }, '*');
-      });
-      root.appendChild(button);
-    `,
-    framework: 'react',
-  },
-  encoding: 'text',
-});
-```
+::: warning External URLs
+External URLs now use the same MIME type (`text/html;profile=mcp-app`) as raw HTML. Host support for external URLs varies - some hosts may detect URL content and embed it in an iframe, while others may not support this content type.
+:::
 
 ## Declaring UI Extension Support
 

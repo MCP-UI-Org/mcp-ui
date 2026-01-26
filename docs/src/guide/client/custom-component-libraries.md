@@ -1,6 +1,10 @@
 # Custom Component Libraries
 
-The `UIResourceRenderer` component allows hosts to provide their own component libraries and custom element definitions for `remoteDom` resources. It enables rendering server-defined UI using the host's existing component system, ensuring a consistent look and feel.
+::: danger Deprecated
+Remote DOM support has been removed from MCP-UI. This documentation is preserved for historical reference only.
+:::
+
+The `UIResourceRenderer` component previously allowed hosts to provide their own component libraries and custom element definitions for `remoteDom` resources.
 
 You can provide your own library and elements through the `remoteDomProps` prop.
 

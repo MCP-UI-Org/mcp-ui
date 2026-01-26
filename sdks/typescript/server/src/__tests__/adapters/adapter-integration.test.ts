@@ -143,7 +143,7 @@ describe('Adapter Integration', () => {
         });
 
         // External URLs should not be wrapped, even with adapters enabled
-        expect(resource.resource.mimeType).toBe('text/uri-list');
+        expect(resource.resource.mimeType).toBe('text/html;profile=mcp-app');
         expect(resource.resource.text).toBe('https://example.com');
         expect(resource.resource.text).not.toContain('<script>');
       });
@@ -160,31 +160,11 @@ describe('Adapter Integration', () => {
         });
 
         // External URLs without adapters should remain as-is (synchronous)
-        expect(resource.resource.mimeType).toBe('text/uri-list');
+        expect(resource.resource.mimeType).toBe('text/html;profile=mcp-app');
         expect(resource.resource.text).toBe('https://example.com');
         expect(resource.resource.text).not.toContain('<script>');
       });
 
-      it('should not affect remote DOM resources', () => {
-        const resource = createUIResource({
-          uri: 'ui://test',
-          content: {
-            type: 'remoteDom',
-            script: 'console.log("test")',
-            framework: 'react',
-          },
-          encoding: 'text',
-          adapters: {
-            appsSdk: {
-              enabled: true,
-            },
-          },
-        });
-
-        // Remote DOM scripts should not be wrapped
-        expect(resource.resource.text).toBe('console.log("test")');
-        expect(resource.resource.text).not.toContain('MCPUIAppsSdkAdapter');
-      });
     });
 
     describe('wrapHtmlWithAdapters', () => {
@@ -445,7 +425,7 @@ describe('Adapter Integration', () => {
         });
 
         // External URLs should not be wrapped, even with adapters enabled
-        expect(resource.resource.mimeType).toBe('text/uri-list');
+        expect(resource.resource.mimeType).toBe('text/html;profile=mcp-app');
         expect(resource.resource.text).toBe('https://example.com');
         expect(resource.resource.text).not.toContain('<script>');
       });

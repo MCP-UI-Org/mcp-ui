@@ -191,53 +191,6 @@ def show_interactive_demo() -> list[UIResource]:
         "encoding": "text"
     })
     return [ui_resource]
-
-@mcp.tool()
-def show_remote_dom() -> list[UIResource]:
-    """Show a Remote DOM component with dynamic elements."""
-    remote_dom_script = """
-    const container = document.createElement('div');
-    container.style.padding = '20px';
-    container.style.fontFamily = 'Arial, sans-serif';
-    
-    const title = document.createElement('ui-text');
-    title.textContent = 'Remote DOM Component';
-    title.style.fontSize = '18px';
-    title.style.fontWeight = 'bold';
-    title.style.marginBottom = '10px';
-    
-    const description = document.createElement('ui-text');
-    description.textContent = 'This component was created using Remote DOM scripting.';
-    description.style.marginBottom = '15px';
-    
-    const button = document.createElement('ui-button');
-    button.setAttribute('label', 'Click for Tool Call');
-    button.addEventListener('press', () => {
-        window.parent.postMessage({
-            type: 'tool',
-            payload: {
-                toolName: 'handle_remote_dom_action',
-                params: { source: 'remote-dom', timestamp: Date.now() }
-            }
-        }, '*');
-    });
-    
-    container.appendChild(title);
-    container.appendChild(description);
-    container.appendChild(button);
-    root.appendChild(container);
-    """
-    
-    ui_resource = create_ui_resource({
-        "uri": "ui://remote-dom/demo",
-        "content": {
-            "type": "remoteDom",
-            "script": remote_dom_script.strip(),
-            "framework": "react"
-        },
-        "encoding": "text"
-    })
-    return [ui_resource]
 ```
 
 ## 5. Complete Server Example

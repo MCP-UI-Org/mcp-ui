@@ -84,7 +84,7 @@ print("Resource 3:", resource3.model_dump_json(indent=2))
 #   "type": "resource",
 #   "resource": {
 #     "uri": "ui://analytics-dashboard/main",
-#     "mimeType": "text/uri-list",
+#     "mimeType": "text/html;profile=mcp-app",
 #     "text": "https://my.analytics.com/dashboard/123"
 #   }
 # }
@@ -106,45 +106,8 @@ print("Resource 4 (blob will be Base64 of URL):", resource4.model_dump_json(inde
 #   "type": "resource",
 #   "resource": {
 #     "uri": "ui://live-chart/session-xyz",
-#     "mimeType": "text/uri-list",
+#     "mimeType": "text/html;profile=mcp-app",
 #     "blob": "aHR0cHM6Ly9jaGFydHMuZXhhbXBsZS5jb20vYXBpP3R5cGU9cGllJmRhdGE9MSwyLDM="
-#   }
-# }
-
-# Example 5: Remote DOM script, text encoding
-remote_dom_script = """
-const button = document.createElement('ui-button');
-button.setAttribute('label', 'Click me for a tool call!');
-button.addEventListener('press', () => {
-    window.parent.postMessage({ 
-        type: 'tool', 
-        payload: { 
-            toolName: 'uiInteraction', 
-            params: { action: 'button-click', from: 'remote-dom' } 
-        } 
-    }, '*');
-});
-root.appendChild(button);
-"""
-
-resource5 = create_ui_resource({
-    "uri": "ui://remote-component/action-button",
-    "content": {
-        "type": "remoteDom",
-        "script": remote_dom_script.strip(),
-        "framework": "react"  # or "webcomponents"
-    },
-    "encoding": "text"
-})
-
-print("Resource 5:", resource5.model_dump_json(indent=2))
-# Output for Resource 5:
-# {
-#   "type": "resource",
-#   "resource": {
-#     "uri": "ui://remote-component/action-button",
-#     "mimeType": "application/vnd.mcp-ui.remote-dom+javascript; framework=react",
-#     "text": "\\nconst button = document.createElement('ui-button');\\n..."
 #   }
 # }
 
@@ -193,37 +156,6 @@ def show_welcome() -> list[UIResource]:
 
 if __name__ == "__main__":
     mcp.run()
-```
-
-## Advanced URI List Example
-
-You can provide multiple URLs in the `text/uri-list` format for fallback purposes. However, **MCP-UI requires a single URL** and will only use the first valid URL found:
-
-```python
-# Example 6: Multiple URLs with fallbacks (MCP-UI uses only the first)
-multi_url_content = """# Primary dashboard
-https://dashboard.example.com/main
-
-# Backup dashboard (will be logged but not used)
-https://backup.dashboard.example.com/main
-
-# Emergency fallback (will be logged but not used)  
-https://emergency.dashboard.example.com/main"""
-
-resource6 = create_ui_resource({
-    "uri": "ui://dashboard-with-fallbacks/session-123",
-    "content": {
-        "type": "externalUrl", 
-        "iframeUrl": multi_url_content
-    },
-    "encoding": "text"
-})
-
-# The client will:
-# 1. Use https://dashboard.example.com/main for rendering
-# 2. Log a warning about the ignored backup URLs
-# This allows you to specify fallback URLs in the standard format 
-# while MCP-UI focuses on the primary URL
 ```
 
 ## Error Handling

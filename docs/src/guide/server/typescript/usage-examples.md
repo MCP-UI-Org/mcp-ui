@@ -22,7 +22,7 @@ import { z } from 'zod';
 
 const server = new McpServer({ name: 'my-server', version: '1.0.0' });
 
-// Create UI resource
+// Create UI resource with MCP Apps protocol
 const widgetUI = createUIResource({
   uri: 'ui://my-server/widget',
   content: {
@@ -32,19 +32,27 @@ const widgetUI = createUIResource({
         <body>
           <h1>Interactive Widget</h1>
           <button onclick="sendMessage()">Send Message</button>
-          <script>
-            window.addEventListener('message', (e) => {
-              if (e.data.type === 'ui-lifecycle-iframe-render-data') {
-                console.log('Tool data:', e.data.payload.renderData);
-              }
-            });
-            function sendMessage() {
-              window.parent.postMessage({
-                type: 'prompt',
-                payload: { prompt: 'Tell me more' }
-              }, '*');
-            }
-            window.parent.postMessage({ type: 'ui-lifecycle-iframe-ready' }, '*');
+          <div id="status">Ready</div>
+          <script type="module">
+            import { App } from 'https://esm.sh/@modelcontextprotocol/ext-apps';
+
+            const app = new App({ name: 'widget', version: '1.0.0' });
+
+            // Listen for tool input
+            app.ontoolinput = (params) => {
+              document.getElementById('status').textContent =
+                'Received: ' + JSON.stringify(params.input);
+            };
+
+            // Send a message to the conversation
+            window.sendMessage = async () => {
+              await app.sendMessage({
+                role: 'user',
+                content: [{ type: 'text', text: 'Tell me more' }]
+              });
+            };
+
+            await app.connect();
           </script>
         </body>
       </html>
@@ -75,6 +83,10 @@ registerAppTool(server, 'show_widget', {
   };
 });
 ```
+
+::: tip MCP Apps Protocol
+The HTML uses the [`@modelcontextprotocol/ext-apps`](https://github.com/modelcontextprotocol/ext-apps) `App` class for communication with the host. See [Protocol Details](/guide/protocol-details) for the full JSON-RPC API. For legacy MCP-UI hosts, see the [MCP Apps Adapter](/guide/mcp-apps).
+:::
 
 ## Creating UI Resources
 
@@ -140,7 +152,7 @@ console.log('Resource 3:', JSON.stringify(resource3, null, 2));
   "type": "resource",
   "resource": {
     "uri": "ui://analytics-dashboard/main",
-    "mimeType": "text/uri-list",
+    "mimeType": "text/html;profile=mcp-app",
     "text": "https://my.analytics.com/dashboard/123"
   }
 }
@@ -162,39 +174,8 @@ console.log(
   "type": "resource",
   "resource": {
     "uri": "ui://live-chart/session-xyz",
-    "mimeType": "text/uri-list",
+    "mimeType": "text/html;profile=mcp-app",
     "blob": "aHR0cHM6Ly9jaGFydHMuZXhhbXBsZS5jb20vYXBpP3R5cGU9cGllJmRhdGE9MSwyLDM="
-  }
-}
-*/
-
-// Example 5: Remote DOM script, text encoding
-const remoteDomScript = `
-  const button = document.createElement('ui-button');
-  button.setAttribute('label', 'Click me for a tool call!');
-  button.addEventListener('press', () => {
-    window.parent.postMessage({ type: 'tool', payload: { toolName: 'uiInteraction', params: { action: 'button-click', from: 'remote-dom' } } }, '*');
-  });
-  root.appendChild(button);
-`;
-
-const resource5 = createUIResource({
-  uri: 'ui://remote-component/action-button',
-  content: {
-    type: 'remoteDom',
-    script: remoteDomScript,
-    framework: 'react', // or 'webcomponents'
-  },
-  encoding: 'text',
-});
-console.log('Resource 5:', JSON.stringify(resource5, null, 2));
-/* Output for Resource 5:
-{
-  "type": "resource",
-  "resource": {
-    "uri": "ui://remote-component/action-button",
-    "mimeType": "application/vnd.mcp-ui.remote-dom+javascript; framework=react",
-    "text": "\\n  const button = document.createElement('ui-button');\\n  button.setAttribute('label', 'Click me for a tool call!');\\n  button.addEventListener('press', () => {\\n    window.parent.postMessage({ type: 'tool', payload: { toolName: 'uiInteraction', params: { action: 'button-click', from: 'remote-dom' } } }, '*');\\n  });\\n  root.appendChild(button);\\n"
   }
 }
 */
@@ -262,7 +243,7 @@ console.log('Resource with UI metadata:', JSON.stringify(resourceWithUIMetadata,
   "type": "resource",
   "resource": {
     "uri": "ui://chart/interactive",
-    "mimeType": "text/uri-list",
+    "mimeType": "text/html;profile=mcp-app",
     "text": "https://charts.example.com/widget",
     "_meta": {
       "mcpui.dev/ui-preferred-frame-size": ["800px", "600px"],
@@ -311,34 +292,6 @@ console.log('Resource with additional props:', JSON.stringify(resourceWithProps,
 - **Use `uiMetadata` for client rendering hints** like preferred sizes, initial data, and context preferences  
 - **Use `resourceProps` for MCP specification properties**, descriptions at the resource level, and other standard fields
 - **Use `embeddedResourceProps` for MCP embedded resource properties** like annotations.
-
-## Advanced URI List Example
-
-You can provide multiple URLs in the `text/uri-list` format for fallback purposes. However, **MCP-UI requires a single URL** and will only use the first valid URL found:
-
-```typescript
-// Example 10: Multiple URLs with fallbacks (MCP-UI uses only the first)
-const multiUrlContent = `# Primary dashboard
-https://dashboard.example.com/main
-
-# Backup dashboard (will be logged but not used)
-https://backup.dashboard.example.com/main
-
-# Emergency fallback (will be logged but not used)  
-https://emergency.dashboard.example.com/main`;
-
-const resource = createUIResource({
-  uri: 'ui://dashboard-with-fallbacks/session-123',
-  content: { type: 'externalUrl', iframeUrl: multiUrlContent },
-  encoding: 'text',
-});
-
-/* The client will:
- * 1. Use https://dashboard.example.com/main for rendering
- * 2. Log a warning about the ignored backup URLs
- * This allows you to specify fallback URLs in the standard format while MCP-UI focuses on the primary URL
- */
-```
 
 ## Error Handling
 

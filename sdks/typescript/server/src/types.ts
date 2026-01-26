@@ -8,14 +8,11 @@ export { RESOURCE_URI_META_KEY, RESOURCE_MIME_TYPE } from '@modelcontextprotocol
 // Primary identifier for the resource. Starts with ui://`
 export type URI = `ui://${string}`;
 
-// text/html for rawHtml content, text/uri-list for externalUrl content
+// text/html;profile=mcp-app is the MCP Apps standard MIME type
 export type MimeType =
   | 'text/html'
   | 'text/html;profile=mcp-app'
-  | 'text/html+skybridge'
-  | 'text/uri-list'
-  | 'application/vnd.mcp-ui.remote-dom+javascript; framework=react'
-  | 'application/vnd.mcp-ui.remote-dom+javascript; framework=webcomponents';
+  | 'text/html+skybridge';
 
 export type HTMLTextContent = {
   uri: URI;
@@ -35,12 +32,7 @@ export type Base64BlobContent = {
 
 export type ResourceContentPayload =
   | { type: 'rawHtml'; htmlString: string }
-  | { type: 'externalUrl'; iframeUrl: string }
-  | {
-      type: 'remoteDom';
-      script: string;
-      framework: 'react' | 'webcomponents';
-    };
+  | { type: 'externalUrl'; iframeUrl: string };
 
 export interface CreateUIResourceOptions {
   uri: URI;

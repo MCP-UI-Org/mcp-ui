@@ -3,6 +3,7 @@ import {
   CreateUIResourceOptions,
   HTMLTextContent,
   MimeType,
+  RESOURCE_MIME_TYPE,
   UIActionResult,
   UIActionResultLink,
   UIActionResultNotification,
@@ -49,10 +50,11 @@ export function createUIResource(options: CreateUIResourceOptions): UIResource {
     // Wrap with adapters if any are enabled
     if (options.adapters) {
       actualContentString = wrapHtmlWithAdapters(actualContentString, options.adapters);
-      // Use adapter's mime type if provided, otherwise fall back to 'text/html'
-      mimeType = (getAdapterMimeType(options.adapters) as MimeType) ?? 'text/html';
+      // Use adapter's mime type if provided, otherwise fall back to MCP Apps standard
+      mimeType = (getAdapterMimeType(options.adapters) as MimeType) ?? RESOURCE_MIME_TYPE;
     } else {
-      mimeType = 'text/html';
+      // Default to MCP Apps standard MIME type
+      mimeType = RESOURCE_MIME_TYPE;
     }
   } else if (options.content.type === 'externalUrl') {
     if (!options.uri.startsWith('ui://')) {
@@ -67,18 +69,9 @@ export function createUIResource(options: CreateUIResourceOptions): UIResource {
       );
     }
     actualContentString = iframeUrl;
-    mimeType = 'text/uri-list';
-  } else if (options.content.type === 'remoteDom') {
-    if (!options.uri.startsWith('ui://')) {
-      throw new Error("MCP-UI SDK: URI must start with 'ui://' when content.type is 'remoteDom'.");
-    }
-    actualContentString = options.content.script;
-    if (typeof actualContentString !== 'string') {
-      throw new Error(
-        "MCP-UI SDK: content.script must be provided as a string when content.type is 'remoteDom'.",
-      );
-    }
-    mimeType = `application/vnd.mcp-ui.remote-dom+javascript; framework=${options.content.framework}`;
+    // externalUrl now uses the same MIME type as rawHtml - hosts that support
+    // external URLs will detect the URL content and handle it appropriately
+    mimeType = RESOURCE_MIME_TYPE;
   } else {
     // This case should ideally be prevented by TypeScript's discriminated union checks
     const exhaustiveCheckContent: never = options.content;

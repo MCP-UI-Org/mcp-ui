@@ -16,81 +16,13 @@ Make sure you have `@mcp-ui/client` and its peer dependencies installed in your 
 npm i @mcp-ui/client
 ```
 
-## Rendering Remote DOM Resources
-
-This example shows how to render a `remoteDom` resource. This requires a `remoteElements` and `componentLibrary` (minimal default provided)  to be passed to the `UIResourceRenderer`.
-
-```tsx
-import React, { useState } from 'react';
-import { 
-  UIResourceRenderer, 
-  UIActionResult,
-  basicComponentLibrary,
-  remoteTextDefinition,
-  remoteButtonDefinition,
-  isUIResource
-} from '@mcp-ui/client';
-
-const remoteDomScript = `
-  const button = document.createElement('ui-button');
-  button.setAttribute('label', 'Click me for a tool call!');
-  button.addEventListener('press', () => {
-    window.parent.postMessage({ type: 'tool', payload: { toolName: 'uiInteraction', params: { action: 'button-click', from: 'remote-dom' } } }, '*');
-  });
-  root.appendChild(button);
-`;
-
-// This mocks the resource as received from the server SDK
-const remoteDomResource = {
-  type: 'resource',
-  resource: {
-    uri: 'ui://remote-component/action-button',
-    mimeType: 'application/vnd.mcp-ui.remote-dom+javascript; framework=react',
-    text: remoteDomScript,
-  },
-};
-
-const AppWithRemoteDOM: React.FC = () => {
-  const [lastAction, setLastAction] = useState<any>(null);
-
-  const handleGenericMcpAction = async (result: UIActionResult) => {
-    if (result.type === 'tool') {
-      setLastAction({ tool: result.payload.toolName, params: result.payload.params });
-    }
-    return { status: 'Action handled' };
-  };
-
-  return (
-    <div>
-      <UIResourceRenderer
-        resource={remoteDomResource.resource}
-        onUIAction={handleGenericMcpAction}
-        remoteDomProps={{
-          library: basicComponentLibrary,
-          remoteElements: [remoteButtonDefinition, remoteTextDefinition],
-        }}
-      />
-      {lastAction && (
-        <div style={{ marginTop: 20, border: '1px solid green', padding: 10 }}>
-          <h3>Last Action Received by Host:</h3>
-          <pre>{JSON.stringify(lastAction, null, 2)}</pre>
-        </div>
-      )}
-    </div>
-  );
-};
-```
-
 ## Rendering HTML Resources
 
 ```tsx
 import React, { useState } from 'react';
-import { 
-  UIResourceRenderer, 
+import {
+  UIResourceRenderer,
   UIActionResult,
-  basicComponentLibrary,
-  remoteTextDefinition,
-  remoteButtonDefinition,
   isUIResource
 } from '@mcp-ui/client';
 
@@ -123,24 +55,6 @@ const fetchMcpResource = async (id: string): Promise<any> => {
         uri: 'ui://example/external-site',
         mimeType: 'text/uri-list',
         text: 'https://vitepress.dev',
-      },
-    };
-  }
-  if (id === 'remote') {
-    const remoteDomScript = `
-      const button = document.createElement('ui-button');
-      button.setAttribute('label', 'Click me for a tool call!');
-      button.addEventListener('press', () => {
-        window.parent.postMessage({ type: 'tool', payload: { toolName: 'uiInteraction', params: { action: 'button-click', from: 'remote-dom' } } }, '*');
-      });
-      root.appendChild(button);
-    `;
-    return {
-      type: 'resource',
-      resource: {
-        uri: 'ui://remote-component/action-button',
-        mimeType: 'application/vnd.mcp-ui.remote-dom+javascript; framework=react',
-        text: remoteDomScript,
       },
     };
   }
@@ -202,9 +116,6 @@ const App: React.FC = () => {
       <button onClick={() => loadResource('external')}>
         Load External App (URL)
       </button>
-      <button onClick={() => loadResource('remote')}>
-        Load Remote DOM
-      </button>
 
       {loading && <p>Loading resource...</p>}
       {error && <p style={{ color: 'red' }}>Error: {error}</p>}
@@ -215,10 +126,6 @@ const App: React.FC = () => {
           <UIResourceRenderer
             resource={uiResource.resource}
             onUIAction={handleGenericMcpAction}
-            remoteDomProps={{
-              library: basicComponentLibrary,
-              remoteElements: [remoteButtonDefinition, remoteTextDefinition],
-            }}
           />
         </div>
       )}
