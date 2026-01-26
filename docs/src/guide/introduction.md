@@ -165,7 +165,7 @@ function ToolUI({ client, toolName, toolInput, toolResult }) {
 - **Standardized**: Implements the MCP Apps specification for consistent behavior across hosts
 - **Secure**: Sandboxed iframe execution prevents malicious code from affecting the host
 - **Interactive**: Two-way communication between UI and host via JSON-RPC
-- **Flexible**: Supports HTML content, external URLs, and Remote DOM resources
+- **Flexible**: Supports HTML content with the MCP Apps standard MIME type
 - **Backward Compatible**: Adapters available for legacy MCP-UI hosts
 
 ## Wire Format: UIResource
@@ -177,14 +177,14 @@ interface UIResource {
   type: 'resource';
   resource: {
     uri: string;       // ui://component/id
-    mimeType: 'text/html' | 'text/uri-list' | 'application/vnd.mcp-ui.remote-dom';
-    text?: string;      // Inline HTML or external URL
+    mimeType: 'text/html;profile=mcp-app';  // MCP Apps standard
+    text?: string;      // Inline HTML content
     blob?: string;      // Base64-encoded content
   };
 }
 ```
 
-For MCP Apps hosts, the MIME type `text/html;profile=mcp-app` indicates an MCP App resource.
+The MIME type `text/html;profile=mcp-app` is the MCP Apps standard for UI resources.
 
 ### Key Field Details:
 
