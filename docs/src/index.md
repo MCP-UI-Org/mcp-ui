@@ -2,9 +2,9 @@
 layout: home
 
 hero:
-  name: MCP Apps SDK
+  name: MCP-UI -> MCP Apps
   text: Interactive UI Components over MCP
-  tagline: Build rich, dynamic interfaces for AI tools using the MCP Apps standard. The @mcp-ui/* packages provide everything you need.
+  tagline: Build rich, dynamic interfaces for AI tools using the MCP Apps standard.
   image:
     light: /logo-lg-black.png
     dark: /logo-lg.png
@@ -25,7 +25,7 @@ hero:
 
 features:
   - title: 🌐 MCP Apps Standard
-    details: The @mcp-ui/* packages implement the MCP Apps specification. Build tools with _meta.ui.resourceUri and render them with AppRenderer.
+    details: MCP Apps is the official for interactive UI in MCP. The MCP-UI packages implement the spec, and serve as a community playground for future enhancements.
   - title: 🛠️ Client & Server SDKs
     details: The recommended MCP Apps Client SDK, with components for seamless integration. Includes server SDK with utilities.
   - title: 🔒 Secure
