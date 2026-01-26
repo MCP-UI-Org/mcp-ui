@@ -34,7 +34,7 @@ import { AppRenderer } from '@mcp-ui/client';
 
 These hosts expect UI resources embedded directly in tool responses:
 
-| Host | Rendering |  | Notes |
+| Host | Rendering | UI Actions | Notes |
 | :--- | :-------: | :--------: | :---- |
 | [Nanobot](https://www.nanobot.ai/) | ✅ | ✅ |
 | [MCPJam](https://www.mcpjam.com/) | ✅ | ✅ |
