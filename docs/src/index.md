@@ -25,7 +25,7 @@ hero:
 
 features:
   - title: 🌐 MCP Apps Standard
-    details: MCP Apps is the official for interactive UI in MCP. The MCP-UI packages implement the spec, and serve as a community playground for future enhancements.
+    details: MCP Apps is the official standard for interactive UI in MCP. The MCP-UI packages implement the spec, and serve as a community playground for future enhancements.
   - title: 🛠️ Client & Server SDKs
     details: The recommended MCP Apps Client SDK, with components for seamless integration. Includes server SDK with utilities.
   - title: 🔒 Secure
