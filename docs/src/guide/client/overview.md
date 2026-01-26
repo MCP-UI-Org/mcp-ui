@@ -41,7 +41,11 @@ function ToolUI({ client, toolName, toolInput, toolResult }) {
       sandbox={{ url: sandboxUrl }}
       toolInput={toolInput}
       toolResult={toolResult}
-      onOpenLink={async ({ url }) => window.open(url)}
+      onOpenLink={async ({ url }) => {
+        if (url.startsWith('https://') || url.startsWith('http://')) {
+          window.open(url);
+        }
+      }}
       onMessage={async (params) => console.log('Message:', params)}
     />
   );

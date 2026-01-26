@@ -161,19 +161,11 @@ Also available as a Web Component:
 
 ### Supported Resource Types
 
-#### HTML (`text/html` and `text/uri-list`)
+#### HTML (`text/html;profile=mcp-app`)
 
-Rendered using the internal `<HTMLResourceRenderer />` component, which displays content inside an `<iframe>`. This is suitable for self-contained HTML or embedding external apps.
+Rendered using the internal `<HTMLResourceRenderer />` component, which displays content inside an `<iframe>`. This is suitable for self-contained HTML.
 
-*   **`mimeType`**:
-    *   `text/html`: Renders inline HTML content.
-    *   `text/uri-list`: Renders an external URL. MCP-UI uses the first valid `http/s` URL.
-
-#### Remote DOM (`application/vnd.mcp-ui.remote-dom`)
-
-Rendered using the internal `<RemoteDOMResourceRenderer />` component, which utilizes Shopify's [`remote-dom`](https://github.com/Shopify/remote-dom). The server responds with a script that describes the UI and events. On the host, the script is securely rendered in a sandboxed iframe, and the UI changes are communicated to the host in JSON, where they're rendered using the host's component library. This is more flexible than iframes and allows for UIs that match the host's look-and-feel.
-
-* **`mimeType`**: `application/vnd.mcp-ui.remote-dom+javascript; framework={react | webcomponents}`
+*   **`mimeType`**: `text/html;profile=mcp-app` (MCP Apps standard)
 
 ### UI Action
 

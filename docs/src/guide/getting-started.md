@@ -60,7 +60,7 @@ const widgetUI = createUIResource({
           <button onclick="sendMessage()">Send Message</button>
           <div id="status">Ready</div>
           <script type="module">
-            import { App } from 'https://esm.sh/@modelcontextprotocol/ext-apps';
+            import { App } from 'https://esm.sh/@modelcontextprotocol/ext-apps@0.4.1';
 
             // Initialize the MCP Apps client
             const app = new App({ name: 'widget', version: '1.0.0' });
@@ -145,7 +145,10 @@ function ToolUI({ client, toolName, toolInput, toolResult }) {
       toolInput={toolInput}
       toolResult={toolResult}
       onOpenLink={async ({ url }) => {
-        window.open(url);
+        // Validate URL scheme before opening
+        if (url.startsWith('https://') || url.startsWith('http://')) {
+          window.open(url);
+        }
         return { isError: false };
       }}
       onMessage={async (params) => {
@@ -206,7 +209,7 @@ const htmlResource = createUIResource({
 });
 ```
 
-### 2. External URLs (`text/uri-list`)
+### 2. External URLs (Legacy)
 
 External applications embedded via iframe:
 

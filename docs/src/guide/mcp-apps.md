@@ -486,7 +486,11 @@ function ToolUI({ client, toolName, toolInput, toolResult }) {
       toolInput={toolInput}
       toolResult={toolResult}
       hostContext={{ theme: 'dark' }}
-      onOpenLink={async ({ url }) => window.open(url)}
+      onOpenLink={async ({ url }) => {
+        if (url.startsWith('https://') || url.startsWith('http://')) {
+          window.open(url);
+        }
+      }}
       onMessage={async (params) => {
         console.log('Message from tool UI:', params);
         return { isError: false };

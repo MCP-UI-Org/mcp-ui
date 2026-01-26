@@ -34,7 +34,7 @@ const widgetUI = createUIResource({
           <button onclick="sendMessage()">Send Message</button>
           <div id="status">Ready</div>
           <script type="module">
-            import { App } from 'https://esm.sh/@modelcontextprotocol/ext-apps';
+            import { App } from 'https://esm.sh/@modelcontextprotocol/ext-apps@0.4.1';
 
             const app = new App({ name: 'widget', version: '1.0.0' });
 
