@@ -265,8 +265,7 @@ div[class*='language-'] code {
   border-right: 1px solid var(--vp-c-divider);
 }
 
-
-.VPSidebarItem[class*="level-"]:not(.level-0) .items {
+.VPSidebarItem[class*='level-']:not(.level-0) .items {
   padding-left: var(--items-left-padding) !important;
 }
 
@@ -524,7 +523,7 @@ div[class*='language-'] code {
   .VPHome .VPHero {
     padding-top: 64px !important;
   }
-  
+
   /* Fix overlap by resetting layout shifts on image */
   .VPHome .VPHero .image,
   .VPHome .VPHero .image-container {
@@ -537,7 +536,7 @@ div[class*='language-'] code {
   .VPHome .VPHero {
     padding-top: 32px !important;
   }
-  
+
   .announcement-banner {
     margin-bottom: 0;
   }

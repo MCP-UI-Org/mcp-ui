@@ -18,9 +18,7 @@ describe('UI Extension Capabilities', () => {
   });
 
   it('should structure capabilities with extension name as key', () => {
-    expect(UI_EXTENSION_CAPABILITIES[UI_EXTENSION_NAME]).toEqual(
-      UI_EXTENSION_CONFIG
-    );
+    expect(UI_EXTENSION_CAPABILITIES[UI_EXTENSION_NAME]).toEqual(UI_EXTENSION_CONFIG);
   });
 
   it('should work with ClientCapabilitiesWithExtensions type', () => {

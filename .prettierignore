@@ -3,6 +3,7 @@ node_modules
 dist
 build
 coverage
+venv
 
 # Ignore package manager files (if you commit them)
 package-lock.json
@@ -13,8 +14,11 @@ pnpm-lock.yaml
 # .vscode/
 # .idea/
 
-# Ignore generated files
+# Ignore generated/bundled files
 *.generated.*
+*.bundled.ts
+docs/src/.vitepress/cache
+extensions/vscode/out
 
 *.log
 *.md 

@@ -389,8 +389,8 @@ app.post('/mcp', async (req, res) => {
         // This tells MCP Apps hosts where to find the UI
         _meta: {
           ui: {
-            resourceUri: weatherDashboardUI.resource.uri
-          }
+            resourceUri: weatherDashboardUI.resource.uri,
+          },
         },
       },
       async ({ location }) => {

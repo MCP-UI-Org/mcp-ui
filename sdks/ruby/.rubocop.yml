@@ -1,9 +1,9 @@
 AllCops:
   NewCops: enable
   Exclude:
-    - "bin/*"
-    - "vendor/**/*"
-    - "tmp/**/*"
+    - 'bin/*'
+    - 'vendor/**/*'
+    - 'tmp/**/*'
 
 plugins:
   - rubocop-rake

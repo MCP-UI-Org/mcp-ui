@@ -9,7 +9,7 @@ import type { AppBridge } from '@modelcontextprotocol/ext-apps/app-bridge';
 // Mock the ext-apps module
 vi.mock('@modelcontextprotocol/ext-apps/app-bridge', () => {
   // Create a mock constructor for PostMessageTransport
-  const MockPostMessageTransport = vi.fn().mockImplementation(function(this: unknown) {
+  const MockPostMessageTransport = vi.fn().mockImplementation(function (this: unknown) {
     return this;
   });
 

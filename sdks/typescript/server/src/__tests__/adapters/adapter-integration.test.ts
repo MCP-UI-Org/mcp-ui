@@ -164,7 +164,6 @@ describe('Adapter Integration', () => {
         expect(resource.resource.text).toBe('https://example.com');
         expect(resource.resource.text).not.toContain('<script>');
       });
-
     });
 
     describe('wrapHtmlWithAdapters', () => {

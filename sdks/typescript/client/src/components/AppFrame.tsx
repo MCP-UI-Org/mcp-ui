@@ -115,16 +115,8 @@ export interface AppFrameProps {
  * ```
  */
 export const AppFrame = (props: AppFrameProps) => {
-  const {
-    html,
-    sandbox,
-    appBridge,
-    onSizeChanged,
-    onInitialized,
-    toolInput,
-    toolResult,
-    onError,
-  } = props;
+  const { html, sandbox, appBridge, onSizeChanged, onInitialized, toolInput, toolResult, onError } =
+    props;
 
   const [iframeReady, setIframeReady] = useState(false);
   const [bridgeConnected, setBridgeConnected] = useState(false);
@@ -223,7 +215,6 @@ export const AppFrame = (props: AppFrameProps) => {
             appCapabilities: appBridge.getAppCapabilities(),
           });
         };
-
 
         // Connect the bridge
         await appBridge.connect(

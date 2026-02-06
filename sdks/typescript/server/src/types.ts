@@ -9,10 +9,7 @@ export { RESOURCE_URI_META_KEY, RESOURCE_MIME_TYPE } from '@modelcontextprotocol
 export type URI = `ui://${string}`;
 
 // text/html;profile=mcp-app is the MCP Apps standard MIME type
-export type MimeType =
-  | 'text/html'
-  | 'text/html;profile=mcp-app'
-  | 'text/html+skybridge';
+export type MimeType = 'text/html' | 'text/html;profile=mcp-app' | 'text/html+skybridge';
 
 export type HTMLTextContent = {
   uri: URI;

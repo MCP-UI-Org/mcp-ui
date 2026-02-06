@@ -36,10 +36,7 @@ export async function setupSandboxProxyIframe(sandboxProxyUrl: URL): Promise<{
 
     const messageListener = (event: MessageEvent) => {
       if (event.source === iframe.contentWindow) {
-        if (
-          event.data &&
-          event.data.method === SANDBOX_PROXY_READY_METHOD
-        ) {
+        if (event.data && event.data.method === SANDBOX_PROXY_READY_METHOD) {
           if (!settled) {
             settled = true;
             clearTimeout(timeoutId);
