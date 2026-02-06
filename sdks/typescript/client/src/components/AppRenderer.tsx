@@ -293,11 +293,12 @@ export const AppRenderer = forwardRef<AppRendererHandle, AppRendererProps>((prop
   // Effect 1: Create and configure AppBridge
   useEffect(() => {
     let mounted = true;
+    let bridge: AppBridge | null = null;
 
     const createBridge = () => {
       try {
         const serverCapabilities = client?.getServerCapabilities();
-        const bridge = new AppBridge(
+        bridge = new AppBridge(
           client ?? null,
           {
             name: 'MCP-UI Host',
@@ -368,6 +369,12 @@ export const AppRenderer = forwardRef<AppRendererHandle, AppRendererProps>((prop
 
     return () => {
       mounted = false;
+      // Clean up the bridge to remove message listeners
+      if (bridge) {
+        bridge.close().catch((err) => {
+          console.error('[AppRenderer] Error closing bridge:', err);
+        });
+      }
     };
   }, [client]);
 
