@@ -1,9 +1,9 @@
-# React Usage & Examples
+# React Usage & Examples (Legacy)
 
-::: tip MCP Apps Hosts
-For MCP Apps hosts (the standard), use `AppRenderer` instead of `UIResourceRenderer`. See [MCP Apps Integration](../mcp-apps#apprenderer-component) for details.
-
+::: warning Deprecated
 This page covers `UIResourceRenderer`, which is for **legacy MCP-UI hosts** that embed resources in tool responses.
+
+For new integrations, use [`AppRenderer`](./app-renderer) instead. See the [Client SDK Walkthrough](./walkthrough) for a step-by-step guide.
 :::
 
 Here's how to use the `<UIResourceRenderer />` component from `@mcp-ui/client` in a React environment.

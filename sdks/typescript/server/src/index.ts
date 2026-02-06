@@ -200,3 +200,58 @@ export function uiActionResultNotification(message: string): UIActionResultNotif
     },
   };
 }
+
+// --- Experimental JSON-RPC helpers ---
+// These enable guest UIs to send custom JSON-RPC requests to the host's
+// onFallbackRequest handler on AppRenderer, using the existing PostMessageTransport.
+
+let _experimentalRequestId = 0;
+
+/**
+ * Send an experimental JSON-RPC request to the host from inside a guest UI iframe.
+ *
+ * The host must have an `onFallbackRequest` handler registered on AppRenderer.
+ * The request flows through PostMessageTransport and AppBridge's fallbackRequestHandler.
+ *
+ * @param method - JSON-RPC method name. Convention: use "x/<namespace>/<action>" for
+ *   experimental methods (e.g., "x/clipboard/write"). Standard MCP methods not yet
+ *   in the Apps spec (e.g., "sampling/createMessage") can use their canonical names.
+ * @param params - Request parameters
+ * @returns Promise that resolves with the host's JSON-RPC response result, or rejects
+ *   with the JSON-RPC error
+ *
+ * @example
+ * ```ts
+ * const result = await sendExperimentalRequest('x/clipboard/write', { text: 'hello' });
+ * ```
+ */
+export function sendExperimentalRequest(
+  method: string,
+  params?: Record<string, unknown>,
+): Promise<unknown> {
+  const id = ++_experimentalRequestId;
+  return new Promise((resolve, reject) => {
+    const handler = (event: MessageEvent) => {
+      const data = event.data;
+      if (data?.jsonrpc === '2.0' && data?.id === id) {
+        window.removeEventListener('message', handler);
+        if (data.error) {
+          reject(data.error);
+        } else {
+          resolve(data.result);
+        }
+      }
+    };
+    window.addEventListener('message', handler);
+
+    window.parent.postMessage(
+      {
+        jsonrpc: '2.0',
+        id,
+        method,
+        params: params ?? {},
+      },
+      '*',
+    );
+  });
+}

@@ -4,6 +4,7 @@ import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import {
   type CallToolRequest,
   type CallToolResult,
+  type JSONRPCRequest,
   type ListPromptsRequest,
   type ListPromptsResult,
   type ListResourcesRequest,
@@ -153,6 +154,39 @@ export interface AppRendererProps {
     params: ListPromptsRequest['params'],
     extra: RequestHandlerExtra,
   ) => Promise<ListPromptsResult>;
+
+  // --- Fallback Handler ---
+
+  /**
+   * Handler for JSON-RPC requests from the guest UI that don't match any
+   * built-in handler (e.g., experimental methods like "x/clipboard/write",
+   * or standard MCP methods not yet in the Apps spec like "sampling/createMessage").
+   *
+   * This is wired to AppBridge's `fallbackRequestHandler` from the MCP SDK Protocol class.
+   * It receives the full JSON-RPC request and should return a result object or throw
+   * an McpError for unsupported methods.
+   *
+   * @example
+   * ```tsx
+   * <AppRenderer
+   *   onFallbackRequest={async (request, extra) => {
+   *     switch (request.method) {
+   *       case 'x/clipboard/write':
+   *         await navigator.clipboard.writeText(request.params?.text);
+   *         return { success: true };
+   *       case 'sampling/createMessage':
+   *         return mcpClient.createMessage(request.params);
+   *       default:
+   *         throw new McpError(ErrorCode.MethodNotFound, `Unknown method: ${request.method}`);
+   *     }
+   *   }}
+   * />
+   * ```
+   */
+  onFallbackRequest?: (
+    request: JSONRPCRequest,
+    extra: RequestHandlerExtra,
+  ) => Promise<Record<string, unknown>>;
 }
 
 /**
@@ -246,6 +280,7 @@ export const AppRenderer = forwardRef<AppRendererHandle, AppRendererProps>((prop
     onListResourceTemplates,
     onReadResource,
     onListPrompts,
+    onFallbackRequest,
   } = props;
 
   // State
@@ -264,6 +299,7 @@ export const AppRenderer = forwardRef<AppRendererHandle, AppRendererProps>((prop
   const onListResourceTemplatesRef = useRef(onListResourceTemplates);
   const onReadResourceRef = useRef(onReadResource);
   const onListPromptsRef = useRef(onListPrompts);
+  const onFallbackRequestRef = useRef(onFallbackRequest);
 
   useEffect(() => {
     onMessageRef.current = onMessage;
@@ -276,6 +312,7 @@ export const AppRenderer = forwardRef<AppRendererHandle, AppRendererProps>((prop
     onListResourceTemplatesRef.current = onListResourceTemplates;
     onReadResourceRef.current = onReadResource;
     onListPromptsRef.current = onListPrompts;
+    onFallbackRequestRef.current = onFallbackRequest;
   });
 
   // Expose send methods via ref for Host → Guest notifications
@@ -352,6 +389,19 @@ export const AppRenderer = forwardRef<AppRendererHandle, AppRendererProps>((prop
         if (onListPromptsRef.current) {
           bridge.onlistprompts = (params, extra) => onListPromptsRef.current!(params, extra);
         }
+
+        // Register fallback handler for unregistered JSON-RPC methods
+        // (e.g., experimental events like "x/clipboard/write" or MCP methods
+        // not yet in the Apps spec like "sampling/createMessage")
+        bridge.fallbackRequestHandler = async (request, extra) => {
+          if (onFallbackRequestRef.current) {
+            return onFallbackRequestRef.current(request, extra);
+          }
+          throw new McpError(
+            ErrorCode.MethodNotFound,
+            `No handler for method: ${request.method}`,
+          );
+        };
 
         if (!mounted) return;
         setAppBridge(bridge);

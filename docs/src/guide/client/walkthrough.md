@@ -369,7 +369,7 @@ Or provide pre-fetched HTML directly:
 
 ## Next Steps
 
-- [AppRenderer Props Reference](./resource-renderer.md) - Complete API documentation
+- [AppRenderer Reference](./app-renderer.md) - Complete API documentation for AppRenderer
 - [Protocol Details](../protocol-details.md) - Understanding the MCP Apps protocol
-- [Legacy MCP-UI Support](../mcp-apps.md) - Supporting older MCP-UI hosts
+- [MCP Apps Overview](../mcp-apps.md) - Protocol details and server-side setup
 - [Supported Hosts](../supported-hosts.md) - See which hosts support MCP Apps

@@ -44,6 +44,7 @@ vi.mock('@modelcontextprotocol/ext-apps/app-bridge', () => {
         onlistresourcetemplates: undefined,
         onreadresource: undefined,
         onlistprompts: undefined,
+        fallbackRequestHandler: undefined,
         setHostContext: vi.fn(),
         sendToolInputPartial: vi.fn(),
         sendToolCancelled: vi.fn(),
@@ -469,6 +470,118 @@ describe('<AppRenderer />', () => {
           onError,
         }),
       );
+    });
+  });
+
+  describe('onFallbackRequest prop', () => {
+    it('should register fallbackRequestHandler on AppBridge', async () => {
+      const onFallbackRequest = vi.fn().mockResolvedValue({ success: true });
+
+      render(<AppRenderer {...defaultProps} onFallbackRequest={onFallbackRequest} />);
+
+      await waitFor(() => {
+        expect(screen.getByTestId('app-frame')).toBeInTheDocument();
+      });
+
+      // fallbackRequestHandler should always be set (even without the prop, it throws MethodNotFound)
+      expect(mockBridgeInstance?.fallbackRequestHandler).toBeDefined();
+    });
+
+    it('should invoke onFallbackRequest when fallbackRequestHandler is called', async () => {
+      const onFallbackRequest = vi.fn().mockResolvedValue({ clipboard: 'written' });
+
+      render(<AppRenderer {...defaultProps} onFallbackRequest={onFallbackRequest} />);
+
+      await waitFor(() => {
+        expect(screen.getByTestId('app-frame')).toBeInTheDocument();
+      });
+
+      // Simulate AppBridge calling the fallback handler with a custom method
+      const mockRequest = {
+        jsonrpc: '2.0' as const,
+        id: 1,
+        method: 'x/clipboard/write',
+        params: { text: 'hello' },
+      };
+      const mockExtra = { signal: new AbortController().signal, requestId: 1, sendNotification: vi.fn(), sendRequest: vi.fn() };
+
+      const result = await mockBridgeInstance?.fallbackRequestHandler?.(mockRequest, mockExtra as never);
+
+      expect(onFallbackRequest).toHaveBeenCalledWith(mockRequest, mockExtra);
+      expect(result).toEqual({ clipboard: 'written' });
+    });
+
+    it('should throw MethodNotFound when onFallbackRequest is not provided', async () => {
+      render(<AppRenderer {...defaultProps} />);
+
+      await waitFor(() => {
+        expect(screen.getByTestId('app-frame')).toBeInTheDocument();
+      });
+
+      const mockRequest = {
+        jsonrpc: '2.0' as const,
+        id: 1,
+        method: 'x/unknown/method',
+        params: {},
+      };
+      const mockExtra = { signal: new AbortController().signal, requestId: 1, sendNotification: vi.fn(), sendRequest: vi.fn() };
+
+      await expect(
+        mockBridgeInstance?.fallbackRequestHandler?.(mockRequest, mockExtra as never),
+      ).rejects.toThrow('No handler for method: x/unknown/method');
+    });
+
+    it('should use the latest onFallbackRequest callback (ref stability)', async () => {
+      const firstHandler = vi.fn().mockResolvedValue({ version: 1 });
+      const secondHandler = vi.fn().mockResolvedValue({ version: 2 });
+
+      const { rerender } = render(
+        <AppRenderer {...defaultProps} onFallbackRequest={firstHandler} />,
+      );
+
+      await waitFor(() => {
+        expect(screen.getByTestId('app-frame')).toBeInTheDocument();
+      });
+
+      // Update the handler
+      rerender(<AppRenderer {...defaultProps} onFallbackRequest={secondHandler} />);
+
+      const mockRequest = {
+        jsonrpc: '2.0' as const,
+        id: 1,
+        method: 'x/test/method',
+        params: {},
+      };
+      const mockExtra = { signal: new AbortController().signal, requestId: 1, sendNotification: vi.fn(), sendRequest: vi.fn() };
+
+      const result = await mockBridgeInstance?.fallbackRequestHandler?.(mockRequest, mockExtra as never);
+
+      // Should use the second (latest) handler
+      expect(firstHandler).not.toHaveBeenCalled();
+      expect(secondHandler).toHaveBeenCalledWith(mockRequest, mockExtra);
+      expect(result).toEqual({ version: 2 });
+    });
+
+    it('should propagate errors from onFallbackRequest', async () => {
+      const onFallbackRequest = vi.fn().mockRejectedValue(new Error('Permission denied'));
+
+      render(<AppRenderer {...defaultProps} onFallbackRequest={onFallbackRequest} />);
+
+      await waitFor(() => {
+        expect(screen.getByTestId('app-frame')).toBeInTheDocument();
+      });
+
+      const mockRequest = {
+        jsonrpc: '2.0' as const,
+        id: 1,
+        method: 'x/restricted/action',
+        params: {},
+      };
+      const mockExtra = { signal: new AbortController().signal, requestId: 1, sendNotification: vi.fn(), sendRequest: vi.fn() };
+
+      await expect(
+        mockBridgeInstance?.fallbackRequestHandler?.(mockRequest, mockExtra as never),
+      ).rejects.toThrow('Permission denied');
     });
   });
 

@@ -510,12 +510,62 @@ function ToolUI({ client, toolName, toolInput, toolResult }) {
 - `toolInput` / `toolResult` - Tool arguments and results to pass to the UI
 - `hostContext` - Theme, locale, viewport info for the guest UI
 - `onOpenLink` / `onMessage` / `onLoggingMessage` - Handlers for guest UI requests
+- `onFallbackRequest` - Catch-all for JSON-RPC requests not handled by the built-in handlers (see [Handling Custom Requests](#handling-custom-requests-onfallbackrequest))
 
 **Ref Methods:**
 - `sendToolListChanged()` - Notify guest when tools change
 - `sendResourceListChanged()` - Notify guest when resources change
 - `sendPromptListChanged()` - Notify guest when prompts change
 - `teardownResource()` - Clean up before unmounting
+
+### Handling Custom Requests (`onFallbackRequest`)
+
+AppRenderer includes built-in handlers for standard MCP Apps methods (`tools/call`, `ui/message`, `ui/open-link`, etc.). The `onFallbackRequest` prop lets you handle **any JSON-RPC request that doesn't match a built-in handler**. This is useful for:
+
+- **Experimental methods** — prototype new capabilities (e.g., `x/clipboard/write`, `x/analytics/track`)
+- **MCP methods not yet in the Apps spec** — support standard MCP methods like `sampling/createMessage` before they're officially added to MCP Apps
+
+Under the hood, this is wired to `AppBridge`'s `fallbackRequestHandler` from the MCP SDK `Protocol` class. The guest UI sends a standard JSON-RPC request via `postMessage`, and if AppBridge has no registered handler for the method, it delegates to `onFallbackRequest`.
+
+**Host-side handler:**
+
+```tsx
+import { AppRenderer, type JSONRPCRequest } from '@mcp-ui/client';
+import { McpError, ErrorCode } from '@modelcontextprotocol/sdk/types.js';
+
+<AppRenderer
+  client={client}
+  toolName="my-tool"
+  sandbox={sandboxConfig}
+  onFallbackRequest={async (request, extra) => {
+    switch (request.method) {
+      case 'x/clipboard/write':
+        await navigator.clipboard.writeText(request.params?.text as string);
+        return { success: true };
+      case 'sampling/createMessage':
+        // Forward to MCP server
+        return client.createMessage(request.params);
+      default:
+        throw new McpError(ErrorCode.MethodNotFound, `Unknown method: ${request.method}`);
+    }
+  }}
+/>
+```
+
+**Guest-side (inside tool UI HTML):**
+
+```ts
+import { sendExperimentalRequest } from '@mcp-ui/server';
+
+// Send a custom request to the host — returns a Promise with the response
+const result = await sendExperimentalRequest('x/clipboard/write', { text: 'hello' });
+```
+
+The `sendExperimentalRequest` helper sends a properly formatted JSON-RPC request via `window.parent.postMessage`. The full request/response cycle flows through `PostMessageTransport` and the sandbox proxy, just like built-in methods.
+
+::: tip Method Naming Convention
+Use the `x/<namespace>/<action>` prefix for experimental methods (e.g., `x/clipboard/write`). Standard MCP methods not yet in the Apps spec (e.g., `sampling/createMessage`) should use their canonical method names. When an experimental method proves useful, it can be promoted to a standard method in the [ext-apps spec](https://github.com/modelcontextprotocol/ext-apps).
+:::
 
 ### Using Without an MCP Client
 

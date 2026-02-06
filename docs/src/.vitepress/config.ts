@@ -190,7 +190,12 @@ export default withMermaid(
               { text: 'Overview', link: '/guide/client/overview' },
               { text: 'Walkthrough', link: '/guide/client/walkthrough' },
               {
-                text: 'UIResourceRenderer',
+                text: 'AppRenderer',
+                link: '/guide/client/app-renderer',
+              },
+              {
+                text: 'UIResourceRenderer (Legacy)',
+                collapsed: true,
                 items: [
                   {
                     text: 'Overview',

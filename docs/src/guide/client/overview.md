@@ -164,7 +164,8 @@ function SmartResourceRenderer({ resource }) {
 See the following pages for more details:
 
 - [Client SDK Walkthrough](./walkthrough.md) - **Step-by-step guide to building an MCP Apps client**
-- [UIResourceRenderer Component](./resource-renderer.md) - Legacy MCP-UI renderer
+- [AppRenderer Component](./app-renderer.md) - **Full API reference for the recommended MCP Apps renderer**
+- [UIResourceRenderer Component](./resource-renderer.md) - Legacy MCP-UI renderer (deprecated)
 - [HTMLResourceRenderer Component](./html-resource.md)
 - [RemoteDOMResourceRenderer Component](./remote-dom-resource.md)
 - [React Usage & Examples](./react-usage-examples.md)
