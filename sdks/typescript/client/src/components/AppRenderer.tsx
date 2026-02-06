@@ -4,6 +4,7 @@ import { type Client } from '@modelcontextprotocol/sdk/client/index.js';
 import {
   type CallToolRequest,
   type CallToolResult,
+  type Implementation,
   type ListPromptsRequest,
   type ListPromptsResult,
   type ListResourcesRequest,
@@ -27,6 +28,7 @@ import {
   type McpUiSizeChangedNotification,
   type McpUiToolInputPartialNotification,
   type McpUiHostContext,
+  type McpUiHostCapabilities,
 } from '@modelcontextprotocol/ext-apps/app-bridge';
 
 import { AppFrame, type SandboxConfig } from './AppFrame';
@@ -85,6 +87,12 @@ export interface AppRendererProps {
 
   /** Host context (theme, viewport, locale, etc.) to pass to the guest UI */
   hostContext?: McpUiHostContext;
+
+  /** Host application identification (name and version). Defaults to { name: 'MCP-UI Host', version: '1.0.0' } */
+  hostInfo?: Implementation;
+
+  /** Host capabilities to advertise to the MCP app. If not provided, capabilities are derived from serverCapabilities. */
+  hostCapabilities?: McpUiHostCapabilities;
 
   /** Handler for open-link requests from the guest UI */
   onOpenLink?: (
@@ -236,6 +244,8 @@ export const AppRenderer = forwardRef<AppRendererHandle, AppRendererProps>((prop
     toolInputPartial,
     toolCancelled,
     hostContext,
+    hostInfo,
+    hostCapabilities,
     onMessage,
     onOpenLink,
     onLoggingMessage,
@@ -297,17 +307,24 @@ export const AppRenderer = forwardRef<AppRendererHandle, AppRendererProps>((prop
     const createBridge = () => {
       try {
         const serverCapabilities = client?.getServerCapabilities();
+        
+        // Use provided hostInfo or defaults
+        const finalHostInfo: Implementation = hostInfo ?? {
+          name: 'MCP-UI Host',
+          version: '1.0.0',
+        };
+        
+        // Use provided hostCapabilities or build from serverCapabilities
+        const finalHostCapabilities: McpUiHostCapabilities = hostCapabilities ?? {
+          openLinks: {},
+          serverTools: serverCapabilities?.tools,
+          serverResources: serverCapabilities?.resources,
+        };
+        
         const bridge = new AppBridge(
           client ?? null,
-          {
-            name: 'MCP-UI Host',
-            version: '1.0.0',
-          },
-          {
-            openLinks: {},
-            serverTools: serverCapabilities?.tools,
-            serverResources: serverCapabilities?.resources,
-          },
+          finalHostInfo,
+          finalHostCapabilities,
         );
 
         // Register message handler
@@ -369,7 +386,7 @@ export const AppRenderer = forwardRef<AppRendererHandle, AppRendererProps>((prop
     return () => {
       mounted = false;
     };
-  }, [client]);
+  }, [client, hostInfo, hostCapabilities]);
 
   // Effect 2: Fetch HTML if not provided
   useEffect(() => {
