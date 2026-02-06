@@ -32,6 +32,7 @@ const createMockAppBridge = () => {
     sendToolResult: vi.fn(),
     getAppVersion: vi.fn().mockReturnValue({ name: 'TestApp', version: '1.0.0' }),
     getAppCapabilities: vi.fn().mockReturnValue({ tools: {} }),
+    close: vi.fn().mockResolvedValue(undefined),
     _oninitialized: null as (() => void) | null,
     _onsizechange: null as ((params: { width?: number; height?: number }) => void) | null,
   };
@@ -396,6 +397,64 @@ describe('<AppFrame />', () => {
 
       // Iframe should NOT be recreated
       expect(appHostUtils.setupSandboxProxyIframe).toHaveBeenCalledTimes(1);
+    });
+
+    it('should call appBridge.close() when component unmounts', async () => {
+      const { unmount } = render(<AppFrame {...getPropsWithBridge()} />);
+
+      await act(() => {
+        onReadyResolve();
+      });
+
+      await act(() => {
+        registeredOninitialized?.();
+      });
+
+      // Verify bridge is connected
+      await waitFor(() => {
+        expect(mockAppBridge.connect).toHaveBeenCalled();
+      });
+
+      // Unmount the component
+      unmount();
+
+      // Verify close was called
+      await waitFor(() => {
+        expect(mockAppBridge.close).toHaveBeenCalled();
+      });
+    });
+
+    it('should call previous appBridge.close() when appBridge changes', async () => {
+      const { rerender } = render(<AppFrame {...getPropsWithBridge()} />);
+
+      await act(() => {
+        onReadyResolve();
+      });
+
+      await act(() => {
+        registeredOninitialized?.();
+      });
+
+      // First bridge should be connected
+      expect(mockAppBridge.connect).toHaveBeenCalledTimes(1);
+
+      // Create new mock for second bridge
+      const secondMockAppBridge = createMockAppBridge();
+      const secondOnReadyPromise = new Promise<void>((resolve) => {
+        onReadyResolve = resolve;
+      });
+      vi.mocked(appHostUtils.setupSandboxProxyIframe).mockResolvedValue({
+        iframe: mockIframe as HTMLIFrameElement,
+        onReady: secondOnReadyPromise,
+      });
+
+      // Re-render with DIFFERENT appBridge
+      rerender(<AppFrame {...getPropsWithBridge({ appBridge: secondMockAppBridge as unknown as AppBridge })} />);
+
+      // Verify the first bridge was closed
+      await waitFor(() => {
+        expect(mockAppBridge.close).toHaveBeenCalled();
+      });
     });
   });
 });
