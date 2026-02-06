@@ -307,20 +307,20 @@ export const AppRenderer = forwardRef<AppRendererHandle, AppRendererProps>((prop
     const createBridge = () => {
       try {
         const serverCapabilities = client?.getServerCapabilities();
-        
+
         // Use provided hostInfo or defaults
         const finalHostInfo: Implementation = hostInfo ?? {
           name: 'MCP-UI Host',
           version: '1.0.0',
         };
-        
+
         // Use provided hostCapabilities or build from serverCapabilities
         const finalHostCapabilities: McpUiHostCapabilities = hostCapabilities ?? {
           openLinks: {},
           serverTools: serverCapabilities?.tools,
           serverResources: serverCapabilities?.resources,
         };
-        
+
         const bridge = new AppBridge(
           client ?? null,
           finalHostInfo,
