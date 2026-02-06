@@ -31,6 +31,9 @@ export {
   type McpUiHostContext,
 } from '@modelcontextprotocol/ext-apps/app-bridge';
 
+// Re-export JSONRPCRequest for typing onFallbackRequest handlers
+export type { JSONRPCRequest } from '@modelcontextprotocol/sdk/types.js';
+
 // The types needed to create a custom component library
 export type {
   ComponentLibrary,
