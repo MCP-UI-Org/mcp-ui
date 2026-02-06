@@ -171,9 +171,9 @@ export const AppFrame = (props: AppFrameProps) => {
         // If switching to a different sandbox URL or appBridge, clean up the old iframe first
         // and close the previous bridge to remove message listeners
         if (iframeRef.current && containerRef.current?.contains(iframeRef.current)) {
-          // Close the previous bridge if it exists
+          // Close the previous bridge if it exists (don't await to avoid blocking)
           if (currentAppBridgeRef.current) {
-            await currentAppBridgeRef.current.close().catch((err) => {
+            currentAppBridgeRef.current.close().catch((err) => {
               console.error('[AppFrame] Error closing previous bridge:', err);
             });
           }
@@ -245,11 +245,11 @@ export const AppFrame = (props: AppFrameProps) => {
     return () => {
       mounted = false;
       // Clean up the bridge to remove message listeners when unmounting
-      if (currentAppBridgeRef.current === appBridge) {
-        appBridge.close().catch((err) => {
-          console.error('[AppFrame] Error closing bridge on unmount:', err);
-        });
-      }
+      // Close the current appBridge being cleaned up regardless of ref equality
+      // to ensure proper cleanup even if refs haven't been updated yet
+      appBridge.close().catch((err) => {
+        console.error('[AppFrame] Error closing bridge on unmount:', err);
+      });
     };
   }, [sandbox.url, sandbox.csp, appBridge]);
 
