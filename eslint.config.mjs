@@ -1,6 +1,8 @@
 import js from '@eslint/js';
 import tseslint from 'typescript-eslint';
 import react from 'eslint-plugin-react';
+import reactHooks from 'eslint-plugin-react-hooks';
+import jsxA11y from 'eslint-plugin-jsx-a11y';
 import prettier from 'eslint-config-prettier';
 import globals from 'globals';
 
@@ -37,6 +39,18 @@ export default tseslint.config(
     },
   },
 
+  // React Hooks
+  {
+    files: ['**/*.tsx', '**/*.jsx'],
+    ...reactHooks.configs['flat/recommended'],
+  },
+
+  // Accessibility
+  {
+    files: ['**/*.tsx', '**/*.jsx'],
+    ...jsxA11y.flatConfigs.recommended,
+  },
+
   // TypeScript and general config
   {
     files: ['**/*.ts', '**/*.tsx'],
@@ -46,8 +60,7 @@ export default tseslint.config(
       globals: {
         ...globals.node,
         ...globals.browser,
-        ...globals.es2021,
-        ...globals.jest,
+        ...globals.es2025,
       },
       parserOptions: {
         ecmaFeatures: {
@@ -57,6 +70,13 @@ export default tseslint.config(
     },
     rules: {
       'react/prop-types': 'off',
+      '@typescript-eslint/consistent-type-imports': [
+        'error',
+        {
+          prefer: 'type-imports',
+          fixStyle: 'inline-type-imports',
+        },
+      ],
       '@typescript-eslint/no-unused-vars': [
         'error',
         {

@@ -1,4 +1,5 @@
-import React, { useMemo, useEffect, useRef, useState } from 'react';
+import type React from 'react';
+import { useMemo, useEffect, useRef, useState } from 'react';
 import { DOMRemoteReceiver } from '@remote-dom/core/receivers';
 import {
   createRemoteComponentRenderer,

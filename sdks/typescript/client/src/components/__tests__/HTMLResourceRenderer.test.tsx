@@ -2,13 +2,13 @@ import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import '@testing-library/jest-dom';
 import {
   HTMLResourceRenderer,
-  HTMLResourceRendererProps,
+  type HTMLResourceRendererProps,
   InternalMessageType,
   ReservedUrlParams,
 } from '../HTMLResourceRenderer';
 import { vi } from 'vitest';
 import type { EmbeddedResource } from '@modelcontextprotocol/sdk/types.js';
-import { UI_METADATA_PREFIX, UIActionResult } from '../../types.js';
+import { UI_METADATA_PREFIX, type UIActionResult } from '../../types.js';
 import React from 'react';
 
 describe('HTMLResource component', () => {

@@ -34,7 +34,7 @@
     "build": "vite build",
     "test": "vitest run",
     "test:watch": "vitest watch",
-    "lint": "eslint . --ext .ts,.tsx"
+    "lint": "eslint ."
   },
   "publishConfig": {
     "access": "public"

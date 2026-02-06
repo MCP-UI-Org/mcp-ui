@@ -1,5 +1,5 @@
 import React from 'react';
-import { ComponentLibrary } from '../../types';
+import { type ComponentLibrary } from '../../types';
 
 // Basic components using simple HTML elements
 // With createRemoteComponentRenderer, remote attributes are passed as props directly

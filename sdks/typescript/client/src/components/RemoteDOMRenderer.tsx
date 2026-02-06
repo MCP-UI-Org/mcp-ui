@@ -1,5 +1,6 @@
-import React, { useEffect, useRef } from 'react';
-import { DOMRemoteReceiver } from '@remote-dom/core/receivers';
+import type React from 'react';
+import { useEffect, useRef } from 'react';
+import { type DOMRemoteReceiver } from '@remote-dom/core/receivers';
 
 export type RemoteDOMRendererProps = {
   receiver: DOMRemoteReceiver;

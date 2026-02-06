@@ -3,8 +3,8 @@ import {
   getToolUiResourceUri as _getToolUiResourceUri,
   RESOURCE_MIME_TYPE,
 } from '@modelcontextprotocol/ext-apps/app-bridge';
-import { Client } from '@modelcontextprotocol/sdk/client/index.js';
-import { Tool } from '@modelcontextprotocol/sdk/types.js';
+import { type Client } from '@modelcontextprotocol/sdk/client/index.js';
+import { type Tool } from '@modelcontextprotocol/sdk/types.js';
 const DEFAULT_SANDBOX_TIMEOUT_MS = 10000;
 
 export async function setupSandboxProxyIframe(sandboxProxyUrl: URL): Promise<{

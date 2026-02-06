@@ -1,7 +1,7 @@
 import type { EmbeddedResource } from '@modelcontextprotocol/sdk/types.js';
-import { ResourceContentType, UIActionResult } from '../types';
-import { HTMLResourceRenderer, HTMLResourceRendererProps } from './HTMLResourceRenderer';
-import { RemoteDOMResourceProps, RemoteDOMResourceRenderer } from './RemoteDOMResourceRenderer';
+import { type ResourceContentType, type UIActionResult } from '../types';
+import { HTMLResourceRenderer, type HTMLResourceRendererProps } from './HTMLResourceRenderer';
+import { type RemoteDOMResourceProps, RemoteDOMResourceRenderer } from './RemoteDOMResourceRenderer';
 import { basicComponentLibrary } from '../remote-dom/component-libraries/basic';
 
 export type UIResourceRendererProps = {

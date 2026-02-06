@@ -1,5 +1,6 @@
 pre-commit:
   parallel: true
+  stage_fixed: true
   jobs:
     - name: lint typescript
       glob: '*.{ts,tsx}'

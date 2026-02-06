@@ -1,7 +1,7 @@
 import r2wc from '@r2wc/react-to-web-component';
 import { UIResourceRenderer, type UIResourceRendererProps } from './UIResourceRenderer';
-import { FC, useCallback, useRef } from 'react';
-import { UIActionResult } from '../types';
+import { type FC, useCallback, useRef } from 'react';
+import { type UIActionResult } from '../types';
 import type { EmbeddedResource } from '@modelcontextprotocol/sdk/types.js';
 
 type UIResourceRendererWCProps = Omit<UIResourceRendererProps, 'resource' | 'onUIAction'> & {

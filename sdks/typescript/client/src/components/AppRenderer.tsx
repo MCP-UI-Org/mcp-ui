@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, useImperativeHandle, forwardRef } from 'react';
 
-import { Client } from '@modelcontextprotocol/sdk/client/index.js';
+import { type Client } from '@modelcontextprotocol/sdk/client/index.js';
 import {
   type CallToolRequest,
   type CallToolResult,

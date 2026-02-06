@@ -3,7 +3,7 @@ import { useEffect, useRef, useState } from 'react';
 import type { CallToolResult, Implementation } from '@modelcontextprotocol/sdk/types.js';
 
 import {
-  AppBridge,
+  type AppBridge,
   PostMessageTransport,
   type McpUiSizeChangedNotification,
   type McpUiResourceCsp,

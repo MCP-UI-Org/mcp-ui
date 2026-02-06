@@ -6,6 +6,7 @@ import type { Client } from '@modelcontextprotocol/sdk/client/index.js';
 
 import { AppRenderer, type AppRendererProps, type AppRendererHandle } from '../AppRenderer';
 import type { AppFrameProps } from '../AppFrame';
+import type { AppBridge } from '@modelcontextprotocol/ext-apps/app-bridge';
 import * as appHostUtils from '../../utils/app-host-utils';
 
 // Mock AppFrame to capture props
@@ -29,7 +30,7 @@ vi.mock('../../utils/app-host-utils', () => ({
 }));
 
 // Store mock bridge instance for test access
-let mockBridgeInstance: Partial<import('@modelcontextprotocol/ext-apps/app-bridge').AppBridge> | null = null;
+let mockBridgeInstance: Partial<AppBridge> | null = null;
 
 // Mock AppBridge constructor
 vi.mock('@modelcontextprotocol/ext-apps/app-bridge', () => {

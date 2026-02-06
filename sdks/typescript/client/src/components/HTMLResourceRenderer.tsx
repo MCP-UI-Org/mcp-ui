@@ -1,6 +1,7 @@
-import React, { useCallback, useEffect, useImperativeHandle, useMemo, useRef } from 'react';
+import type React from 'react';
+import { useCallback, useEffect, useImperativeHandle, useMemo, useRef } from 'react';
 import type { EmbeddedResource } from '@modelcontextprotocol/sdk/types.js';
-import { UIActionResult, UIMetadataKey } from '../types';
+import { type UIActionResult, UIMetadataKey } from '../types';
 import { processHTMLResource } from '../utils/processResource';
 import { getUIResourceMetadata } from '../utils/metadataUtils';
 

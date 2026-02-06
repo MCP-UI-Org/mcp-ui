@@ -1,5 +1,5 @@
-import { RemoteReceiver } from '@remote-dom/core/receivers';
-import React from 'react';
+import { type RemoteReceiver } from '@remote-dom/core/receivers';
+import type React from 'react';
 
 export type UIActionType = 'tool' | 'prompt' | 'link' | 'intent' | 'notify';
 

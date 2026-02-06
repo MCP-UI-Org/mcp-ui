@@ -14,7 +14,7 @@
     "preview": "vite preview",
     "test": "vitest run",
     "test:watch": "vitest watch",
-    "lint": "eslint . --ext .ts,.tsx"
+    "lint": "eslint ."
   },
   "devDependencies": {
     "typescript": "^5.0.0",
