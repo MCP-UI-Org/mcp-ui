@@ -544,7 +544,7 @@ function ToolUI({ client, toolName }) {
     <AppRenderer
       client={client}
       toolName={toolName}
-      sandbox={{ url: sandboxUrl }}
+      sandbox={{ url: new URL('http://localhost:8765/sandbox_proxy.html') }}
       hostInfo={hostInfo}
       hostCapabilities={hostCapabilities}
       onOpenLink={async ({ url }) => window.open(url)}

@@ -58,6 +58,7 @@ vi.mock('@modelcontextprotocol/ext-apps/app-bridge', () => {
         sendResourceListChanged: vi.fn(),
         sendPromptListChanged: vi.fn(),
         teardownResource: vi.fn(),
+        close: vi.fn().mockResolvedValue(undefined),
       };
       return mockBridgeInstance;
     }),

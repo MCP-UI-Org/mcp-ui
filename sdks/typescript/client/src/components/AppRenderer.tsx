@@ -303,6 +303,7 @@ export const AppRenderer = forwardRef<AppRendererHandle, AppRendererProps>((prop
   // Effect 1: Create and configure AppBridge
   useEffect(() => {
     let mounted = true;
+    let currentBridge: AppBridge | null = null;
 
     const createBridge = () => {
       try {
@@ -326,6 +327,8 @@ export const AppRenderer = forwardRef<AppRendererHandle, AppRendererProps>((prop
           finalHostInfo,
           finalHostCapabilities,
         );
+
+        currentBridge = bridge;
 
         // Register message handler
         bridge.onmessage = async (params, extra) => {
@@ -385,6 +388,12 @@ export const AppRenderer = forwardRef<AppRendererHandle, AppRendererProps>((prop
 
     return () => {
       mounted = false;
+      // Clean up the bridge connection to prevent message listener accumulation
+      if (currentBridge) {
+        currentBridge.close().catch((err) => {
+          console.error('[AppRenderer] Error closing bridge:', err);
+        });
+      }
     };
   }, [client, hostInfo, hostCapabilities]);
 
