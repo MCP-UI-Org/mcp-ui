@@ -509,6 +509,8 @@ function ToolUI({ client, toolName, toolInput, toolResult }) {
 - `toolResourceUri` - Optional pre-fetched resource URI
 - `toolInput` / `toolResult` - Tool arguments and results to pass to the UI
 - `hostContext` - Theme, locale, viewport info for the guest UI
+- `hostInfo` - Host application identification (name and version). Defaults to `{ name: 'MCP-UI Host', version: '1.0.0' }`
+- `hostCapabilities` - Host capabilities to advertise to the MCP app (e.g., `openLinks`, `serverTools`, `logging`)
 - `onOpenLink` / `onMessage` / `onLoggingMessage` - Handlers for guest UI requests
 
 **Ref Methods:**
@@ -516,6 +518,42 @@ function ToolUI({ client, toolName, toolInput, toolResult }) {
 - `sendResourceListChanged()` - Notify guest when resources change
 - `sendPromptListChanged()` - Notify guest when prompts change
 - `teardownResource()` - Clean up before unmounting
+
+### Customizing Host Identity
+
+By default, `AppRenderer` identifies itself as "MCP-UI Host" to guest apps. You can customize the host identity and capabilities to properly identify your application:
+
+```tsx
+import { AppRenderer } from '@mcp-ui/client';
+import type { Implementation, McpUiHostCapabilities } from '@mcp-ui/client';
+
+function ToolUI({ client, toolName }) {
+  const hostInfo: Implementation = {
+    name: 'goose',
+    version: '2.3.4',
+  };
+
+  const hostCapabilities: McpUiHostCapabilities = {
+    openLinks: {},
+    serverTools: { listChanged: true },
+    serverResources: { listChanged: true },
+    logging: {},
+  };
+
+  return (
+    <AppRenderer
+      client={client}
+      toolName={toolName}
+      sandbox={{ url: new URL('http://localhost:8765/sandbox_proxy.html') }}
+      hostInfo={hostInfo}
+      hostCapabilities={hostCapabilities}
+      onOpenLink={async ({ url }) => window.open(url)}
+    />
+  );
+}
+```
+
+This allows guest apps to know they're running in your specific host application and what capabilities are available.
 
 ### Using Without an MCP Client
 

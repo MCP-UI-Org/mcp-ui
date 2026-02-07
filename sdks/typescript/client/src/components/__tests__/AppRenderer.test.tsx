@@ -58,6 +58,7 @@ vi.mock('@modelcontextprotocol/ext-apps/app-bridge', () => {
         sendResourceListChanged: vi.fn(),
         sendPromptListChanged: vi.fn(),
         teardownResource: vi.fn(),
+        close: vi.fn().mockResolvedValue(undefined),
       };
       return mockBridgeInstance;
     }),
@@ -543,6 +544,95 @@ describe('<AppRenderer />', () => {
           '<html><body>Custom fetched HTML</body></html>',
         );
       });
+    });
+  });
+
+  describe('hostInfo prop', () => {
+    it('should use default hostInfo when not provided', async () => {
+      const AppBridgeMock = vi.mocked(
+        (await import('@modelcontextprotocol/ext-apps/app-bridge')).AppBridge,
+      );
+
+      render(<AppRenderer {...defaultProps} />);
+
+      await waitFor(() => {
+        expect(screen.getByTestId('app-frame')).toBeInTheDocument();
+      });
+
+      expect(AppBridgeMock).toHaveBeenCalledWith(
+        mockClient,
+        { name: 'MCP-UI Host', version: '1.0.0' },
+        expect.any(Object),
+      );
+    });
+
+    it('should use provided hostInfo', async () => {
+      const AppBridgeMock = vi.mocked(
+        (await import('@modelcontextprotocol/ext-apps/app-bridge')).AppBridge,
+      );
+
+      const customHostInfo = { name: 'goose', version: '2.3.4' };
+
+      render(<AppRenderer {...defaultProps} hostInfo={customHostInfo} />);
+
+      await waitFor(() => {
+        expect(screen.getByTestId('app-frame')).toBeInTheDocument();
+      });
+
+      expect(AppBridgeMock).toHaveBeenCalledWith(
+        mockClient,
+        customHostInfo,
+        expect.any(Object),
+      );
+    });
+  });
+
+  describe('hostCapabilities prop', () => {
+    it('should derive hostCapabilities from serverCapabilities when not provided', async () => {
+      const AppBridgeMock = vi.mocked(
+        (await import('@modelcontextprotocol/ext-apps/app-bridge')).AppBridge,
+      );
+
+      render(<AppRenderer {...defaultProps} />);
+
+      await waitFor(() => {
+        expect(screen.getByTestId('app-frame')).toBeInTheDocument();
+      });
+
+      expect(AppBridgeMock).toHaveBeenCalledWith(
+        mockClient,
+        expect.any(Object),
+        {
+          openLinks: {},
+          serverTools: {},
+          serverResources: {},
+        },
+      );
+    });
+
+    it('should use provided hostCapabilities', async () => {
+      const AppBridgeMock = vi.mocked(
+        (await import('@modelcontextprotocol/ext-apps/app-bridge')).AppBridge,
+      );
+
+      const customCapabilities = {
+        openLinks: {},
+        serverTools: { listChanged: true },
+        serverResources: { listChanged: true },
+        logging: {},
+      };
+
+      render(<AppRenderer {...defaultProps} hostCapabilities={customCapabilities} />);
+
+      await waitFor(() => {
+        expect(screen.getByTestId('app-frame')).toBeInTheDocument();
+      });
+
+      expect(AppBridgeMock).toHaveBeenCalledWith(
+        mockClient,
+        expect.any(Object),
+        customCapabilities,
+      );
     });
   });
 });

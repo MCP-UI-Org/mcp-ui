@@ -29,7 +29,11 @@ export {
   AppBridge,
   PostMessageTransport,
   type McpUiHostContext,
+  type McpUiHostCapabilities,
 } from '@modelcontextprotocol/ext-apps/app-bridge';
+
+// Re-export MCP SDK types commonly used with AppRenderer
+export { type Implementation } from '@modelcontextprotocol/sdk/types.js';
 
 // The types needed to create a custom component library
 export type {
