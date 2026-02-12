@@ -207,6 +207,8 @@ export function uiActionResultNotification(message: string): UIActionResultNotif
 
 let _experimentalRequestId = 0;
 
+const DEFAULT_EXPERIMENTAL_REQUEST_TIMEOUT_MS = 30_000;
+
 /**
  * Send an experimental JSON-RPC request to the host from inside a guest UI iframe.
  *
@@ -217,6 +219,9 @@ let _experimentalRequestId = 0;
  *   experimental methods (e.g., "x/clipboard/write"). Standard MCP methods not yet
  *   in the Apps spec (e.g., "sampling/createMessage") can use their canonical names.
  * @param params - Request parameters
+ * @param options - Optional configuration
+ * @param options.signal - AbortSignal to cancel the request
+ * @param options.timeoutMs - Timeout in milliseconds (default: 30000). Set to 0 to disable.
  * @returns Promise that resolves with the host's JSON-RPC response result, or rejects
  *   with the JSON-RPC error
  *
@@ -228,13 +233,29 @@ let _experimentalRequestId = 0;
 export function sendExperimentalRequest(
   method: string,
   params?: Record<string, unknown>,
+  options?: { signal?: AbortSignal; timeoutMs?: number },
 ): Promise<unknown> {
   const id = ++_experimentalRequestId;
+  const timeoutMs = options?.timeoutMs ?? DEFAULT_EXPERIMENTAL_REQUEST_TIMEOUT_MS;
+
   return new Promise((resolve, reject) => {
+    let timeoutId: ReturnType<typeof setTimeout> | undefined;
+
+    const cleanup = () => {
+      window.removeEventListener('message', handler);
+      if (timeoutId !== undefined) {
+        clearTimeout(timeoutId);
+      }
+      options?.signal?.removeEventListener('abort', onAbort);
+    };
+
     const handler = (event: MessageEvent) => {
+      // Only accept responses from the parent window
+      if (event.source !== window.parent) return;
+
       const data = event.data;
       if (data?.jsonrpc === '2.0' && data?.id === id) {
-        window.removeEventListener('message', handler);
+        cleanup();
         if (data.error) {
           reject(data.error);
         } else {
@@ -242,7 +263,26 @@ export function sendExperimentalRequest(
         }
       }
     };
+
+    const onAbort = () => {
+      cleanup();
+      reject(new Error(`Experimental request "${method}" was aborted`));
+    };
+
+    if (options?.signal?.aborted) {
+      reject(new Error(`Experimental request "${method}" was aborted`));
+      return;
+    }
+
+    options?.signal?.addEventListener('abort', onAbort);
     window.addEventListener('message', handler);
+
+    if (timeoutMs > 0) {
+      timeoutId = setTimeout(() => {
+        cleanup();
+        reject(new Error(`Experimental request "${method}" timed out after ${timeoutMs}ms`));
+      }, timeoutMs);
+    }
 
     window.parent.postMessage(
       {

@@ -67,6 +67,15 @@ const mockClient = {
   }),
 };
 
+function createMockExtra() {
+  return {
+    signal: new AbortController().signal,
+    requestId: 1,
+    sendNotification: vi.fn(),
+    sendRequest: vi.fn(),
+  };
+}
+
 describe('<AppRenderer />', () => {
   const defaultProps: AppRendererProps = {
     client: mockClient as unknown as Client,
@@ -503,7 +512,7 @@ describe('<AppRenderer />', () => {
         method: 'x/clipboard/write',
         params: { text: 'hello' },
       };
-      const mockExtra = { signal: new AbortController().signal, requestId: 1, sendNotification: vi.fn(), sendRequest: vi.fn() };
+      const mockExtra = createMockExtra();
 
       const result = await mockBridgeInstance?.fallbackRequestHandler?.(mockRequest, mockExtra as never);
 
@@ -524,7 +533,7 @@ describe('<AppRenderer />', () => {
         method: 'x/unknown/method',
         params: {},
       };
-      const mockExtra = { signal: new AbortController().signal, requestId: 1, sendNotification: vi.fn(), sendRequest: vi.fn() };
+      const mockExtra = createMockExtra();
 
       await expect(
         mockBridgeInstance?.fallbackRequestHandler?.(mockRequest, mockExtra as never),
@@ -552,7 +561,7 @@ describe('<AppRenderer />', () => {
         method: 'x/test/method',
         params: {},
       };
-      const mockExtra = { signal: new AbortController().signal, requestId: 1, sendNotification: vi.fn(), sendRequest: vi.fn() };
+      const mockExtra = createMockExtra();
 
       const result = await mockBridgeInstance?.fallbackRequestHandler?.(mockRequest, mockExtra as never);
 
@@ -577,7 +586,7 @@ describe('<AppRenderer />', () => {
         method: 'x/restricted/action',
         params: {},
       };
-      const mockExtra = { signal: new AbortController().signal, requestId: 1, sendNotification: vi.fn(), sendRequest: vi.fn() };
+      const mockExtra = createMockExtra();
 
       await expect(
         mockBridgeInstance?.fallbackRequestHandler?.(mockRequest, mockExtra as never),
