@@ -242,17 +242,13 @@ export function sendExperimentalRequest(
   const timeout = options?.timeout ?? 30000;
   const targetOrigin = options?.targetOrigin ?? '*';
 
+  // Check if window.parent is available before setting up anything
+  if (!window.parent || window.parent === window) {
+    return Promise.reject(new Error('No parent window available'));
+  }
+
   return new Promise((resolve, reject) => {
     let isSettled = false;
-
-    const cleanup = (timeoutId: ReturnType<typeof setTimeout>) => {
-      if (!isSettled) {
-        isSettled = true;
-        window.removeEventListener('message', handler);
-        clearTimeout(timeoutId);
-        options?.signal?.removeEventListener('abort', abortHandler);
-      }
-    };
 
     const handler = (event: MessageEvent) => {
       // Validate that the message comes from the parent window
@@ -262,7 +258,7 @@ export function sendExperimentalRequest(
 
       const data = event.data;
       if (data?.jsonrpc === '2.0' && data?.id === id) {
-        cleanup(timeoutId);
+        cleanup();
         if (data.error) {
           reject(data.error);
         } else {
@@ -272,20 +268,29 @@ export function sendExperimentalRequest(
     };
 
     const abortHandler = () => {
-      cleanup(timeoutId);
+      cleanup();
       reject(new Error('Request aborted'));
+    };
+
+    const cleanup = () => {
+      if (!isSettled) {
+        isSettled = true;
+        window.removeEventListener('message', handler);
+        clearTimeout(timeoutId);
+        options?.signal?.removeEventListener('abort', abortHandler);
+      }
     };
 
     // Set up timeout
     const timeoutId = setTimeout(() => {
-      cleanup(timeoutId);
+      cleanup();
       reject(new Error(`Request timeout after ${timeout}ms`));
     }, timeout);
 
     // Set up abort signal
     if (options?.signal) {
       if (options.signal.aborted) {
-        cleanup(timeoutId);
+        cleanup();
         reject(new Error('Request aborted'));
         return;
       }
@@ -293,13 +298,6 @@ export function sendExperimentalRequest(
     }
 
     window.addEventListener('message', handler);
-
-    // Check if window.parent is available
-    if (!window.parent || window.parent === window) {
-      cleanup(timeoutId);
-      reject(new Error('No parent window available'));
-      return;
-    }
 
     window.parent.postMessage(
       {
