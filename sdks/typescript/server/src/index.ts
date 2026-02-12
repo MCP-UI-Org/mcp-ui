@@ -217,6 +217,10 @@ let _experimentalRequestId = 0;
  *   experimental methods (e.g., "x/clipboard/write"). Standard MCP methods not yet
  *   in the Apps spec (e.g., "sampling/createMessage") can use their canonical names.
  * @param params - Request parameters
+ * @param options - Optional configuration for the request
+ * @param options.signal - Optional AbortSignal to cancel the request
+ * @param options.timeout - Optional timeout in milliseconds (default: 30000)
+ * @param options.targetOrigin - Optional target origin for postMessage (default: '*')
  * @returns Promise that resolves with the host's JSON-RPC response result, or rejects
  *   with the JSON-RPC error
  *
@@ -228,13 +232,37 @@ let _experimentalRequestId = 0;
 export function sendExperimentalRequest(
   method: string,
   params?: Record<string, unknown>,
+  options?: {
+    signal?: AbortSignal;
+    timeout?: number;
+    targetOrigin?: string;
+  },
 ): Promise<unknown> {
   const id = ++_experimentalRequestId;
+  const timeout = options?.timeout ?? 30000;
+  const targetOrigin = options?.targetOrigin ?? '*';
+
   return new Promise((resolve, reject) => {
+    let isSettled = false;
+
+    const cleanup = (timeoutId: ReturnType<typeof setTimeout>) => {
+      if (!isSettled) {
+        isSettled = true;
+        window.removeEventListener('message', handler);
+        clearTimeout(timeoutId);
+        options?.signal?.removeEventListener('abort', abortHandler);
+      }
+    };
+
     const handler = (event: MessageEvent) => {
+      // Validate that the message comes from the parent window
+      if (event.source !== window.parent) {
+        return;
+      }
+
       const data = event.data;
       if (data?.jsonrpc === '2.0' && data?.id === id) {
-        window.removeEventListener('message', handler);
+        cleanup(timeoutId);
         if (data.error) {
           reject(data.error);
         } else {
@@ -242,7 +270,36 @@ export function sendExperimentalRequest(
         }
       }
     };
+
+    const abortHandler = () => {
+      cleanup(timeoutId);
+      reject(new Error('Request aborted'));
+    };
+
+    // Set up timeout
+    const timeoutId = setTimeout(() => {
+      cleanup(timeoutId);
+      reject(new Error(`Request timeout after ${timeout}ms`));
+    }, timeout);
+
+    // Set up abort signal
+    if (options?.signal) {
+      if (options.signal.aborted) {
+        cleanup(timeoutId);
+        reject(new Error('Request aborted'));
+        return;
+      }
+      options.signal.addEventListener('abort', abortHandler);
+    }
+
     window.addEventListener('message', handler);
+
+    // Check if window.parent is available
+    if (!window.parent || window.parent === window) {
+      cleanup(timeoutId);
+      reject(new Error('No parent window available'));
+      return;
+    }
 
     window.parent.postMessage(
       {
@@ -251,7 +308,7 @@ export function sendExperimentalRequest(
         method,
         params: params ?? {},
       },
-      '*',
+      targetOrigin,
     );
   });
 }
