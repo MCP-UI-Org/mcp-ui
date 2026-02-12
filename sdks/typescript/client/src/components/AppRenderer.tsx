@@ -164,7 +164,7 @@ export interface AppRendererProps {
    *
    * This is wired to AppBridge's `fallbackRequestHandler` from the MCP SDK Protocol class.
    * It receives the full JSON-RPC request and should return a result object or throw
-   * an McpError for unsupported methods.
+   * a McpError for unsupported methods.
    *
    * @example
    * ```tsx
