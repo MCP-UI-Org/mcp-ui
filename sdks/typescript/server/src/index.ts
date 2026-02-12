@@ -235,6 +235,12 @@ export function sendExperimentalRequest(
   params?: Record<string, unknown>,
   options?: { signal?: AbortSignal; timeoutMs?: number },
 ): Promise<unknown> {
+  if (window.parent === window) {
+    return Promise.reject(
+      new Error('sendExperimentalRequest must be called from within an iframe'),
+    );
+  }
+
   const id = ++_experimentalRequestId;
   const timeoutMs = options?.timeoutMs ?? DEFAULT_EXPERIMENTAL_REQUEST_TIMEOUT_MS;
 
@@ -289,7 +295,7 @@ export function sendExperimentalRequest(
         jsonrpc: '2.0',
         id,
         method,
-        params: params ?? {},
+        ...(params !== undefined && { params }),
       },
       '*',
     );
