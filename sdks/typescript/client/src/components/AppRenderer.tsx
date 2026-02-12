@@ -21,6 +21,7 @@ import {
 import {
   AppBridge,
   RESOURCE_MIME_TYPE,
+  type AppResult,
   type McpUiMessageRequest,
   type McpUiMessageResult,
   type McpUiOpenLinkRequest,
@@ -163,7 +164,7 @@ export interface AppRendererProps {
    * or standard MCP methods not yet in the Apps spec like "sampling/createMessage").
    *
    * This is wired to AppBridge's `fallbackRequestHandler` from the MCP SDK Protocol class.
-   * It receives the full JSON-RPC request and should return a result object or throw
+   * It receives the full JSON-RPC request and should return a result value or throw
    * an McpError for unsupported methods.
    *
    * @example
@@ -186,7 +187,7 @@ export interface AppRendererProps {
   onFallbackRequest?: (
     request: JSONRPCRequest,
     extra: RequestHandlerExtra,
-  ) => Promise<Record<string, unknown>>;
+  ) => Promise<unknown>;
 }
 
 /**
@@ -395,7 +396,7 @@ export const AppRenderer = forwardRef<AppRendererHandle, AppRendererProps>((prop
         // not yet in the Apps spec like "sampling/createMessage")
         bridge.fallbackRequestHandler = async (request, extra) => {
           if (onFallbackRequestRef.current) {
-            return onFallbackRequestRef.current(request, extra);
+            return onFallbackRequestRef.current(request, extra) as Promise<AppResult>;
           }
           throw new McpError(
             ErrorCode.MethodNotFound,

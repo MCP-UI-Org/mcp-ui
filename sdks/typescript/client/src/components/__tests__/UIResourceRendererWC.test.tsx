@@ -141,7 +141,6 @@ describe('UIResourceRendererWC', () => {
       const el = document.createElement('ui-resource-renderer');
 
       // Verify the element has the connectedMoveCallback method
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       expect('connectedMoveCallback' in el).toBe(true);
 
       // The element should be an HTMLElement
