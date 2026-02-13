@@ -1,3 +1,5 @@
+[![MSeeP.ai Security Assessment Badge](https://mseep.net/pr/idosal-mcp-ui-badge.png)](https://mseep.ai/app/idosal-mcp-ui)
+
 ## 📦 Model Context Protocol UI SDK
 
 <p align="center">
