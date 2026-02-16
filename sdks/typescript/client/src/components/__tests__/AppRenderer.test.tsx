@@ -33,6 +33,12 @@ vi.mock('../AppFrame', () => ({
 vi.mock('../../utils/app-host-utils', () => ({
   getToolUiResourceUri: vi.fn(),
   readToolUiResourceHtml: vi.fn(),
+  parseToolUiResourceContent: vi.fn((content: { text?: string; _meta?: { ui?: unknown } }) => ({
+    html: content.text ?? '',
+    csp: (content._meta as { ui?: { csp?: unknown } } | undefined)?.ui?.csp,
+    permissions: (content._meta as { ui?: { permissions?: unknown } } | undefined)?.ui
+      ?.permissions,
+  })),
 }));
 
 // Store mock bridge instance for test access
@@ -90,7 +96,7 @@ describe('<AppRenderer />', () => {
       uri: 'ui://test-tool',
     });
     vi.mocked(appHostUtils.readToolUiResourceHtml).mockResolvedValue(
-      '<html><body>Test Tool UI</body></html>',
+      { html: '<html><body>Test Tool UI</body></html>' },
     );
   });
 
@@ -174,6 +180,32 @@ describe('<AppRenderer />', () => {
       await waitFor(() => {
         const appFrame = screen.getByTestId('app-frame');
         expect(appFrame).toHaveAttribute('data-sandbox-url', 'http://localhost:8081/sandbox.html');
+      });
+    });
+
+    it('should merge resource metadata into sandbox config', async () => {
+      const csp = {
+        connectDomains: ['api.example.com'],
+        resourceDomains: ['cdn.example.com'],
+      };
+      const permissions = { microphone: {}, clipboardWrite: {} };
+
+      vi.mocked(appHostUtils.readToolUiResourceHtml).mockResolvedValueOnce({
+        html: '<html><body>Test Tool UI</body></html>',
+        csp,
+        permissions,
+      });
+
+      render(<AppRenderer {...defaultProps} />);
+
+      await waitFor(() => {
+        expect(screen.getByTestId('app-frame')).toBeInTheDocument();
+      });
+
+      await waitFor(() => {
+        const lastCall = mockAppFrame.mock.calls.at(-1)?.[0] as AppFrameProps;
+        expect(lastCall.sandbox.csp).toEqual(csp);
+        expect(lastCall.sandbox.permissions).toEqual(permissions);
       });
     });
 

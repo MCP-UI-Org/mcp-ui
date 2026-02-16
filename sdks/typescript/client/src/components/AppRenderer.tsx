@@ -19,7 +19,6 @@ import {
 
 import {
   AppBridge,
-  RESOURCE_MIME_TYPE,
   type McpUiMessageRequest,
   type McpUiMessageResult,
   type McpUiOpenLinkRequest,
@@ -30,7 +29,12 @@ import {
 } from '@modelcontextprotocol/ext-apps/app-bridge';
 
 import { AppFrame, type SandboxConfig } from './AppFrame';
-import { getToolUiResourceUri, readToolUiResourceHtml } from '../utils/app-host-utils';
+import {
+  getToolUiResourceUri,
+  parseToolUiResourceContent,
+  readToolUiResourceHtml,
+  type ToolUiResourceContent,
+} from '../utils/app-host-utils';
 
 /**
  * Extra metadata passed to request handlers (from AppBridge).
@@ -251,6 +255,7 @@ export const AppRenderer = forwardRef<AppRendererHandle, AppRendererProps>((prop
   // State
   const [appBridge, setAppBridge] = useState<AppBridge | null>(null);
   const [html, setHtml] = useState<string | null>(htmlProp ?? null);
+  const [resourceContent, setResourceContent] = useState<Omit<ToolUiResourceContent, 'html'>>({});
   const [error, setError] = useState<Error | null>(null);
 
   // Refs for callbacks
@@ -375,6 +380,7 @@ export const AppRenderer = forwardRef<AppRendererHandle, AppRendererProps>((prop
   useEffect(() => {
     if (htmlProp) {
       setHtml(htmlProp);
+      setResourceContent({});
       return;
     }
 
@@ -392,6 +398,7 @@ export const AppRenderer = forwardRef<AppRendererHandle, AppRendererProps>((prop
     }
 
     let mounted = true;
+    setResourceContent({});
 
     const fetchHtml = async () => {
       try {
@@ -421,7 +428,14 @@ export const AppRenderer = forwardRef<AppRendererHandle, AppRendererProps>((prop
         let htmlContent: string;
 
         if (client) {
-          htmlContent = await readToolUiResourceHtml(client, { uri });
+          const content = await readToolUiResourceHtml(client, { uri });
+          htmlContent = content.html;
+          if (mounted) {
+            setResourceContent({
+              csp: content.csp,
+              permissions: content.permissions,
+            });
+          }
         } else if (onReadResourceRef.current) {
           // Use the onReadResource callback to fetch the HTML
           const result = await onReadResourceRef.current({ uri }, {} as RequestHandlerExtra);
@@ -429,18 +443,13 @@ export const AppRenderer = forwardRef<AppRendererHandle, AppRendererProps>((prop
             throw new Error('Unsupported UI resource content length: ' + result.contents?.length);
           }
           const content = result.contents[0];
-          const isHtml = (t?: string) => t === RESOURCE_MIME_TYPE;
-
-          if ('text' in content && typeof content.text === 'string' && isHtml(content.mimeType)) {
-            htmlContent = content.text;
-          } else if (
-            'blob' in content &&
-            typeof content.blob === 'string' &&
-            isHtml(content.mimeType)
-          ) {
-            htmlContent = atob(content.blob);
-          } else {
-            throw new Error('Unsupported UI resource content format: ' + JSON.stringify(content));
+          const parsedContent = parseToolUiResourceContent(content);
+          htmlContent = parsedContent.html;
+          if (mounted) {
+            setResourceContent({
+              csp: parsedContent.csp,
+              permissions: parsedContent.permissions,
+            });
           }
         } else {
           throw new Error('No way to read resource HTML');
@@ -498,11 +507,17 @@ export const AppRenderer = forwardRef<AppRendererHandle, AppRendererProps>((prop
     return null;
   }
 
+  const sandboxConfig: SandboxConfig = {
+    ...sandbox,
+    csp: resourceContent.csp ?? sandbox.csp,
+    permissions: resourceContent.permissions ?? sandbox.permissions,
+  };
+
   // Render AppFrame with the fetched HTML and configured bridge
   return (
     <AppFrame
       html={html}
-      sandbox={sandbox}
+      sandbox={sandboxConfig}
       appBridge={appBridge}
       toolInput={toolInput}
       toolResult={toolResult}
