@@ -13,9 +13,20 @@ vi.mock('@modelcontextprotocol/ext-apps/app-bridge', () => {
     return this;
   });
 
+  const buildAllowAttribute = (permissions?: Record<string, unknown>) => {
+    if (!permissions) return '';
+    const allowList: string[] = [];
+    if (permissions.camera) allowList.push('camera');
+    if (permissions.microphone) allowList.push('microphone');
+    if (permissions.geolocation) allowList.push('geolocation');
+    if (permissions.clipboardWrite) allowList.push('clipboard-write');
+    return allowList.join('; ');
+  };
+
   return {
     AppBridge: vi.fn(),
     PostMessageTransport: MockPostMessageTransport,
+    buildAllowAttribute,
   };
 });
 
@@ -119,7 +130,50 @@ describe('<AppFrame />', () => {
     render(<AppFrame {...getPropsWithBridge()} />);
 
     await waitFor(() => {
-      expect(appHostUtils.setupSandboxProxyIframe).toHaveBeenCalledWith(defaultProps.sandbox.url);
+      expect(appHostUtils.setupSandboxProxyIframe).toHaveBeenCalledWith(
+        defaultProps.sandbox.url,
+        '',
+      );
+    });
+  });
+
+  it('should pass iframe allow policy to setupSandboxProxyIframe', async () => {
+    render(
+      <AppFrame
+        {...getPropsWithBridge({
+          sandbox: {
+            ...defaultProps.sandbox,
+            permissions: { microphone: {}, clipboardWrite: {} },
+          },
+        })}
+      />,
+    );
+
+    await waitFor(() => {
+      expect(appHostUtils.setupSandboxProxyIframe).toHaveBeenCalledWith(
+        defaultProps.sandbox.url,
+        'microphone; clipboard-write',
+      );
+    });
+  });
+
+  it('should pass through string iframe allow policy to setupSandboxProxyIframe', async () => {
+    render(
+      <AppFrame
+        {...getPropsWithBridge({
+          sandbox: {
+            ...defaultProps.sandbox,
+            permissions: 'microphone; clipboard-write',
+          },
+        })}
+      />,
+    );
+
+    await waitFor(() => {
+      expect(appHostUtils.setupSandboxProxyIframe).toHaveBeenCalledWith(
+        defaultProps.sandbox.url,
+        'microphone; clipboard-write',
+      );
     });
   });
 
@@ -254,6 +308,34 @@ describe('<AppFrame />', () => {
     });
   });
 
+  it('should forward permissions metadata to sandbox', async () => {
+    const permissions = { microphone: {}, clipboardWrite: {} };
+
+    render(
+      <AppFrame
+        {...getPropsWithBridge({
+          sandbox: { ...defaultProps.sandbox, permissions },
+        })}
+      />,
+    );
+
+    await act(() => {
+      onReadyResolve();
+    });
+
+    await act(() => {
+      registeredOninitialized?.();
+    });
+
+    await waitFor(() => {
+      expect(mockAppBridge.sendSandboxResourceReady).toHaveBeenCalledWith({
+        html: defaultProps.html,
+        csp: undefined,
+        permissions,
+      });
+    });
+  });
+
   it('should call onError when setup fails', async () => {
     const onError = vi.fn();
     const error = new Error('Setup failed');
@@ -329,7 +411,45 @@ describe('<AppFrame />', () => {
       // Should call setupSandboxProxyIframe again with new URL
       await waitFor(() => {
         expect(appHostUtils.setupSandboxProxyIframe).toHaveBeenCalledTimes(2);
-        expect(appHostUtils.setupSandboxProxyIframe).toHaveBeenLastCalledWith(newSandboxUrl);
+        expect(appHostUtils.setupSandboxProxyIframe).toHaveBeenLastCalledWith(newSandboxUrl, '');
+      });
+    });
+
+    it('should recreate iframe when permission policy changes', async () => {
+      const { rerender } = render(<AppFrame {...getPropsWithBridge()} />);
+
+      await act(() => {
+        onReadyResolve();
+      });
+
+      await act(() => {
+        registeredOninitialized?.();
+      });
+
+      expect(appHostUtils.setupSandboxProxyIframe).toHaveBeenCalledTimes(1);
+
+      const secondOnReadyPromise = new Promise<void>((resolve) => {
+        onReadyResolve = resolve;
+      });
+      vi.mocked(appHostUtils.setupSandboxProxyIframe).mockResolvedValue({
+        iframe: mockIframe as HTMLIFrameElement,
+        onReady: secondOnReadyPromise,
+      });
+
+      rerender(
+        <AppFrame
+          {...getPropsWithBridge({
+            sandbox: { ...defaultProps.sandbox, permissions: 'microphone' },
+          })}
+        />,
+      );
+
+      await waitFor(() => {
+        expect(appHostUtils.setupSandboxProxyIframe).toHaveBeenCalledTimes(2);
+        expect(appHostUtils.setupSandboxProxyIframe).toHaveBeenLastCalledWith(
+          defaultProps.sandbox.url,
+          'microphone',
+        );
       });
     });
 

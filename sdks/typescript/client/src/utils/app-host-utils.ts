@@ -2,12 +2,64 @@ import {
   SANDBOX_PROXY_READY_METHOD,
   getToolUiResourceUri as _getToolUiResourceUri,
   RESOURCE_MIME_TYPE,
+  type McpUiResourceCsp,
+  type McpUiResourceMeta,
+  type McpUiResourcePermissions,
 } from '@modelcontextprotocol/ext-apps/app-bridge';
 import { type Client } from '@modelcontextprotocol/sdk/client/index.js';
-import { type Tool } from '@modelcontextprotocol/sdk/types.js';
+import { type ReadResourceResult, type Tool } from '@modelcontextprotocol/sdk/types.js';
 const DEFAULT_SANDBOX_TIMEOUT_MS = 10000;
 
-export async function setupSandboxProxyIframe(sandboxProxyUrl: URL): Promise<{
+export type ToolUiResourceContent = {
+  html: string;
+  csp?: McpUiResourceCsp;
+  permissions?: McpUiResourcePermissions;
+};
+
+function isObject(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null;
+}
+
+function getUiMetadata(content: ReadResourceResult['contents'][number]): {
+  csp?: McpUiResourceCsp;
+  permissions?: McpUiResourcePermissions;
+} {
+  const contentWithMeta = content as { _meta?: unknown; meta?: unknown };
+  const metadata = isObject(contentWithMeta._meta)
+    ? contentWithMeta._meta
+    : isObject(contentWithMeta.meta)
+      ? contentWithMeta.meta
+      : undefined;
+  const ui = metadata && isObject(metadata.ui) ? (metadata.ui as McpUiResourceMeta) : undefined;
+  const csp = ui && isObject(ui.csp) ? (ui.csp as McpUiResourceCsp) : undefined;
+  const permissions =
+    ui && isObject(ui.permissions) ? (ui.permissions as McpUiResourcePermissions) : undefined;
+
+  return { csp, permissions };
+}
+
+export function parseToolUiResourceContent(
+  content: ReadResourceResult['contents'][number],
+): ToolUiResourceContent {
+  let html: string;
+  const isHtml = (t?: string) => t === RESOURCE_MIME_TYPE;
+
+  if ('text' in content && typeof content.text === 'string' && isHtml(content.mimeType)) {
+    html = content.text;
+  } else if ('blob' in content && typeof content.blob === 'string' && isHtml(content.mimeType)) {
+    html = atob(content.blob);
+  } else {
+    throw new Error('Unsupported UI resource content format: ' + JSON.stringify(content));
+  }
+
+  const { csp, permissions } = getUiMetadata(content);
+  return { html, csp, permissions };
+}
+
+export async function setupSandboxProxyIframe(
+  sandboxProxyUrl: URL,
+  permissionPolicyAllow?: string,
+): Promise<{
   iframe: HTMLIFrameElement;
   onReady: Promise<void>;
 }> {
@@ -17,6 +69,9 @@ export async function setupSandboxProxyIframe(sandboxProxyUrl: URL): Promise<{
   iframe.style.border = 'none';
   iframe.style.backgroundColor = 'transparent';
   iframe.setAttribute('sandbox', 'allow-scripts allow-same-origin allow-forms');
+  if (permissionPolicyAllow) {
+    iframe.setAttribute('allow', permissionPolicyAllow);
+  }
 
   const onReady = new Promise<void>((resolve, reject) => {
     let settled = false;
@@ -102,7 +157,7 @@ export async function readToolUiResourceHtml(
   opts: {
     uri: string;
   },
-): Promise<string> {
+): Promise<ToolUiResourceContent> {
   const resource = await client.readResource({ uri: opts.uri });
 
   if (!resource) {
@@ -111,17 +166,5 @@ export async function readToolUiResourceHtml(
   if (resource.contents.length !== 1) {
     throw new Error('Unsupported UI resource content length: ' + resource.contents.length);
   }
-  const content = resource.contents[0];
-  let html: string;
-  const isHtml = (t?: string) => t === RESOURCE_MIME_TYPE;
-
-  if ('text' in content && typeof content.text === 'string' && isHtml(content.mimeType)) {
-    html = content.text;
-  } else if ('blob' in content && typeof content.blob === 'string' && isHtml(content.mimeType)) {
-    html = atob(content.blob);
-  } else {
-    throw new Error('Unsupported UI resource content format: ' + JSON.stringify(content));
-  }
-
-  return html;
+  return parseToolUiResourceContent(resource.contents[0]);
 }

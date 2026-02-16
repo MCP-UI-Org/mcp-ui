@@ -5,9 +5,12 @@ import type { CallToolResult, Implementation } from '@modelcontextprotocol/sdk/t
 import {
   type AppBridge,
   PostMessageTransport,
+  buildAllowAttribute,
   type McpUiSizeChangedNotification,
   type McpUiResourceCsp,
   type McpUiAppCapabilities,
+  type McpUiResourcePermissions,
+  type McpUiSandboxResourceReadyNotification,
 } from '@modelcontextprotocol/ext-apps/app-bridge';
 
 import { setupSandboxProxyIframe } from '../utils/app-host-utils';
@@ -45,8 +48,13 @@ export interface AppInfo {
 export interface SandboxConfig {
   /** URL to the sandbox proxy HTML */
   url: URL;
-  /** Override iframe sandbox attribute (default: "allow-scripts allow-same-origin allow-forms") */
-  permissions?: string;
+  /**
+   * Permission policy for the sandboxed app.
+   *
+   * - `string`: iframe `allow` attribute value (e.g. "microphone; clipboard-write")
+   * - `object`: MCP UI permissions metadata from resource `_meta.ui.permissions`
+   */
+  permissions?: string | McpUiResourcePermissions;
   /**
    * CSP metadata for the sandbox.
    *
@@ -125,6 +133,8 @@ export const AppFrame = (props: AppFrameProps) => {
   const iframeRef = useRef<HTMLIFrameElement | null>(null);
   // Track the current sandbox URL to detect when it changes
   const currentSandboxUrlRef = useRef<string | null>(null);
+  // Track the current iframe permission policy (`allow` attribute) to detect changes
+  const currentPermissionPolicyAllowRef = useRef<string>('');
   // Track the current appBridge to detect when it changes (for isolation)
   const currentAppBridgeRef = useRef<AppBridge | null>(null);
 
@@ -146,12 +156,17 @@ export const AppFrame = (props: AppFrameProps) => {
     // HTTP headers (tamper-proof). The CSP is also sent via postMessage as fallback.
     const sandboxUrl = buildSandboxUrl(sandbox.url, sandbox.csp);
     const sandboxUrlString = sandboxUrl.href;
+    const permissionPolicyAllow =
+      typeof sandbox.permissions === 'string'
+        ? sandbox.permissions
+        : buildAllowAttribute(sandbox.permissions);
 
-    // If we already have an iframe set up for this sandbox URL AND the same appBridge, skip setup
+    // If we already have an iframe set up for this sandbox URL, allow policy, and appBridge, skip setup
     // This preserves the iframe state across React re-renders (including StrictMode)
     // but ensures isolation when switching to a different app/resource (different appBridge)
     if (
       currentSandboxUrlRef.current === sandboxUrlString &&
+      currentPermissionPolicyAllowRef.current === permissionPolicyAllow &&
       currentAppBridgeRef.current === appBridge &&
       iframeRef.current
     ) {
@@ -173,15 +188,17 @@ export const AppFrame = (props: AppFrameProps) => {
           containerRef.current.removeChild(iframeRef.current);
           iframeRef.current = null;
           currentSandboxUrlRef.current = null;
+          currentPermissionPolicyAllowRef.current = '';
           currentAppBridgeRef.current = null;
         }
 
-        const { iframe, onReady } = await setupSandboxProxyIframe(sandboxUrl);
+        const { iframe, onReady } = await setupSandboxProxyIframe(sandboxUrl, permissionPolicyAllow);
 
         if (!mounted) return;
 
         iframeRef.current = iframe;
         currentSandboxUrlRef.current = sandboxUrlString;
+        currentPermissionPolicyAllowRef.current = permissionPolicyAllow;
         currentAppBridgeRef.current = appBridge;
         if (containerRef.current) {
           containerRef.current.appendChild(iframe);
@@ -238,7 +255,7 @@ export const AppFrame = (props: AppFrameProps) => {
     return () => {
       mounted = false;
     };
-  }, [sandbox.url, sandbox.csp, appBridge]);
+  }, [sandbox.url, sandbox.csp, sandbox.permissions, appBridge]);
 
   // Effect 2: Send HTML to sandbox when bridge is connected
   useEffect(() => {
@@ -249,10 +266,16 @@ export const AppFrame = (props: AppFrameProps) => {
     const sendHtml = async () => {
       try {
         console.log('[AppFrame] Sending HTML to sandbox');
-        await appBridge.sendSandboxResourceReady({
+        const params: McpUiSandboxResourceReadyNotification['params'] = {
           html,
           csp: sandbox.csp,
-        });
+        };
+
+        if (sandbox.permissions && typeof sandbox.permissions !== 'string') {
+          params.permissions = sandbox.permissions;
+        }
+
+        await appBridge.sendSandboxResourceReady(params);
       } catch (err) {
         const error = err instanceof Error ? err : new Error(String(err));
         setError(error);
@@ -261,7 +284,7 @@ export const AppFrame = (props: AppFrameProps) => {
     };
 
     sendHtml();
-  }, [bridgeConnected, html, appBridge, sandbox.csp]);
+  }, [bridgeConnected, html, appBridge, sandbox.csp, sandbox.permissions]);
 
   // Effect 3: Send tool input when ready
   useEffect(() => {

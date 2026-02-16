@@ -414,8 +414,8 @@ importers:
   sdks/typescript/client:
     dependencies:
       '@modelcontextprotocol/ext-apps':
-        specifier: ^0.3.1
-        version: 0.3.1(@modelcontextprotocol/sdk@1.25.1(hono@4.11.1)(zod@3.25.67))(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(zod@3.25.67)
+        specifier: ^1.0.1
+        version: 1.0.1(@modelcontextprotocol/sdk@1.25.1(hono@4.11.1)(zod@3.25.67))(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(zod@3.25.67)
       '@modelcontextprotocol/sdk':
         specifier: ^1.24.0
         version: 1.25.1(hono@4.11.1)(zod@3.25.67)
@@ -2088,6 +2088,19 @@ packages:
 
   '@modelcontextprotocol/ext-apps@0.3.1':
     resolution: {integrity: sha512-Iivz2KwWK8xlRbiWwFB/C4NXqE8VJBoRCbBkJCN98ST2UbQvA6kfyebcLsypiqylJS467XOOaBcI9DeQ3t+zqA==}
+    peerDependencies:
+      '@modelcontextprotocol/sdk': ^1.24.0
+      react: ^17.0.0 || ^18.0.0 || ^19.0.0
+      react-dom: ^17.0.0 || ^18.0.0 || ^19.0.0
+      zod: ^3.25.0 || ^4.0.0
+    peerDependenciesMeta:
+      react:
+        optional: true
+      react-dom:
+        optional: true
+
+  '@modelcontextprotocol/ext-apps@1.0.1':
+    resolution: {integrity: sha512-rAPzBbB5GNgYk216paQjGKUgbNXSy/yeR95c0ni6Y4uvhWI2AeF+ztEOqQFLBMQy/MPM+02pbVK1HaQmQjMwYQ==}
     peerDependencies:
       '@modelcontextprotocol/sdk': ^1.24.0
       react: ^17.0.0 || ^18.0.0 || ^19.0.0
@@ -10460,31 +10473,6 @@ snapshots:
       react: 19.2.0
       react-dom: 19.2.0(react@19.2.0)
 
-  '@modelcontextprotocol/ext-apps@0.3.1(@modelcontextprotocol/sdk@1.25.1(hono@4.11.1)(zod@3.25.67))(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(zod@3.25.67)':
-    dependencies:
-      '@modelcontextprotocol/sdk': 1.25.1(hono@4.11.1)(zod@3.25.67)
-      zod: 3.25.67
-    optionalDependencies:
-      '@oven/bun-darwin-aarch64': 1.3.3
-      '@oven/bun-darwin-x64': 1.3.3
-      '@oven/bun-darwin-x64-baseline': 1.3.3
-      '@oven/bun-linux-aarch64': 1.3.3
-      '@oven/bun-linux-aarch64-musl': 1.3.3
-      '@oven/bun-linux-x64': 1.3.3
-      '@oven/bun-linux-x64-baseline': 1.3.3
-      '@oven/bun-linux-x64-musl': 1.3.3
-      '@oven/bun-linux-x64-musl-baseline': 1.3.3
-      '@oven/bun-windows-x64': 1.3.3
-      '@oven/bun-windows-x64-baseline': 1.3.3
-      '@rollup/rollup-darwin-arm64': 4.53.3
-      '@rollup/rollup-darwin-x64': 4.53.3
-      '@rollup/rollup-linux-arm64-gnu': 4.53.3
-      '@rollup/rollup-linux-x64-gnu': 4.53.3
-      '@rollup/rollup-win32-arm64-msvc': 4.55.1
-      '@rollup/rollup-win32-x64-msvc': 4.53.3
-      react: 18.3.1
-      react-dom: 18.3.1(react@18.3.1)
-
   '@modelcontextprotocol/ext-apps@0.3.1(@modelcontextprotocol/sdk@1.25.1(hono@4.11.1)(zod@3.25.67))(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(zod@3.25.67)':
     dependencies:
       '@modelcontextprotocol/sdk': 1.25.1(hono@4.11.1)(zod@3.25.67)
@@ -10509,6 +10497,31 @@ snapshots:
       '@rollup/rollup-win32-x64-msvc': 4.53.3
       react: 19.2.0
       react-dom: 19.2.0(react@19.2.0)
+
+  '@modelcontextprotocol/ext-apps@1.0.1(@modelcontextprotocol/sdk@1.25.1(hono@4.11.1)(zod@3.25.67))(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(zod@3.25.67)':
+    dependencies:
+      '@modelcontextprotocol/sdk': 1.25.1(hono@4.11.1)(zod@3.25.67)
+      zod: 3.25.67
+    optionalDependencies:
+      '@oven/bun-darwin-aarch64': 1.3.3
+      '@oven/bun-darwin-x64': 1.3.3
+      '@oven/bun-darwin-x64-baseline': 1.3.3
+      '@oven/bun-linux-aarch64': 1.3.3
+      '@oven/bun-linux-aarch64-musl': 1.3.3
+      '@oven/bun-linux-x64': 1.3.3
+      '@oven/bun-linux-x64-baseline': 1.3.3
+      '@oven/bun-linux-x64-musl': 1.3.3
+      '@oven/bun-linux-x64-musl-baseline': 1.3.3
+      '@oven/bun-windows-x64': 1.3.3
+      '@oven/bun-windows-x64-baseline': 1.3.3
+      '@rollup/rollup-darwin-arm64': 4.53.3
+      '@rollup/rollup-darwin-x64': 4.53.3
+      '@rollup/rollup-linux-arm64-gnu': 4.53.3
+      '@rollup/rollup-linux-x64-gnu': 4.53.3
+      '@rollup/rollup-win32-arm64-msvc': 4.55.1
+      '@rollup/rollup-win32-x64-msvc': 4.53.3
+      react: 18.3.1
+      react-dom: 18.3.1(react@18.3.1)
 
   '@modelcontextprotocol/sdk@1.22.0':
     dependencies:
