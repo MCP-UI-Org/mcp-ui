@@ -200,3 +200,104 @@ export function uiActionResultNotification(message: string): UIActionResultNotif
     },
   };
 }
+
+// --- Experimental JSON-RPC helpers ---
+// These enable guest UIs to send custom JSON-RPC requests to the host's
+// onFallbackRequest handler on AppRenderer, using the existing PostMessageTransport.
+
+let _experimentalRequestId = 0;
+
+const DEFAULT_EXPERIMENTAL_REQUEST_TIMEOUT_MS = 30_000;
+
+/**
+ * Send an experimental JSON-RPC request to the host from inside a guest UI iframe.
+ *
+ * The host must have an `onFallbackRequest` handler registered on AppRenderer.
+ * The request flows through PostMessageTransport and AppBridge's fallbackRequestHandler.
+ *
+ * @param method - JSON-RPC method name. Convention: use "x/<namespace>/<action>" for
+ *   experimental methods (e.g., "x/clipboard/write"). Standard MCP methods not yet
+ *   in the Apps spec (e.g., "sampling/createMessage") can use their canonical names.
+ * @param params - Request parameters
+ * @param options - Optional configuration
+ * @param options.signal - AbortSignal to cancel the request
+ * @param options.timeoutMs - Timeout in milliseconds (default: 30000). Set to 0 to disable.
+ * @returns Promise that resolves with the host's JSON-RPC response result, or rejects
+ *   with the JSON-RPC error
+ *
+ * @example
+ * ```ts
+ * const result = await sendExperimentalRequest('x/clipboard/write', { text: 'hello' });
+ * ```
+ */
+export function sendExperimentalRequest(
+  method: string,
+  params?: Record<string, unknown>,
+  options?: { signal?: AbortSignal; timeoutMs?: number },
+): Promise<unknown> {
+  if (window.parent === window) {
+    return Promise.reject(
+      new Error('sendExperimentalRequest must be called from within an iframe'),
+    );
+  }
+
+  const id = ++_experimentalRequestId;
+  const timeoutMs = options?.timeoutMs ?? DEFAULT_EXPERIMENTAL_REQUEST_TIMEOUT_MS;
+
+  return new Promise((resolve, reject) => {
+    let timeoutId: ReturnType<typeof setTimeout> | undefined;
+
+    const cleanup = () => {
+      window.removeEventListener('message', handler);
+      if (timeoutId !== undefined) {
+        clearTimeout(timeoutId);
+      }
+      options?.signal?.removeEventListener('abort', onAbort);
+    };
+
+    const handler = (event: MessageEvent) => {
+      // Only accept responses from the parent window
+      if (event.source !== window.parent) return;
+
+      const data = event.data;
+      if (data?.jsonrpc === '2.0' && data?.id === id) {
+        cleanup();
+        if (data.error) {
+          reject(data.error);
+        } else {
+          resolve(data.result);
+        }
+      }
+    };
+
+    const onAbort = () => {
+      cleanup();
+      reject(new Error(`Experimental request "${method}" was aborted`));
+    };
+
+    if (options?.signal?.aborted) {
+      reject(new Error(`Experimental request "${method}" was aborted`));
+      return;
+    }
+
+    options?.signal?.addEventListener('abort', onAbort);
+    window.addEventListener('message', handler);
+
+    if (timeoutMs > 0) {
+      timeoutId = setTimeout(() => {
+        cleanup();
+        reject(new Error(`Experimental request "${method}" timed out after ${timeoutMs}ms`));
+      }, timeoutMs);
+    }
+
+    window.parent.postMessage(
+      {
+        jsonrpc: '2.0',
+        id,
+        method,
+        ...(params !== undefined && { params }),
+      },
+      '*',
+    );
+  });
+}

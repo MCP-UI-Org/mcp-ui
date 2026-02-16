@@ -1,6 +1,6 @@
 {
   "name": "@mcp-ui/client",
-  "version": "6.0.0",
+  "version": "6.1.0",
   "description": "mcp-ui Client SDK",
   "private": false,
   "type": "module",

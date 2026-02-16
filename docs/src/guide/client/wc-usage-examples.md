@@ -1,9 +1,9 @@
-# Web Component Usage & Examples
+# Web Component Usage & Examples (Legacy)
 
-::: tip MCP Apps Hosts
-For MCP Apps hosts (the standard), use `AppRenderer` or `AppFrame` React components. See [MCP Apps Integration](../mcp-apps#apprenderer-component) for details.
-
+::: warning Deprecated
 The `UIResourceRenderer` Web Component is for **legacy MCP-UI hosts** that embed resources in tool responses.
+
+For new integrations, use [`AppRenderer`](./app-renderer) instead. See the [Client SDK Walkthrough](./walkthrough) for a step-by-step guide.
 :::
 
 `UIResourceRenderer` is available as a Web Component and serves as a powerful tool for integrating MCP-UI resources into non-React frameworks such as Vue, Svelte, or vanilla JavaScript. It offers the same core functionality as its React counterpart but is used as a standard HTML element.
