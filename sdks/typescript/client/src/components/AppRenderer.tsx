@@ -21,6 +21,7 @@ import {
 import {
   AppBridge,
   RESOURCE_MIME_TYPE,
+  type McpUiHostCapabilities,
   type McpUiMessageRequest,
   type McpUiMessageResult,
   type McpUiOpenLinkRequest,
@@ -59,6 +60,36 @@ export interface AppRendererHandle {
 export interface AppRendererProps {
   /** MCP client connected to the server providing the tool. Omit to disable automatic MCP forwarding and use custom handlers instead. */
   client?: Client;
+
+  /**
+   * Host capabilities to advertise to the guest app during initialization.
+   *
+   * When provided, these capabilities are passed directly to the AppBridge
+   * and sent to the guest app in the `ui/initialize` response. This is the
+   * recommended way to declare host capabilities when using callback-based
+   * handlers (onCallTool, onReadResource, etc.) without an MCP client.
+   *
+   * When omitted, capabilities are derived from the `client` prop:
+   * - `openLinks` is always advertised
+   * - `serverTools` is advertised if `client.getServerCapabilities().tools` exists
+   * - `serverResources` is advertised if `client.getServerCapabilities().resources` exists
+   *
+   * @example Declare capabilities for a callback-based host
+   * ```tsx
+   * <AppRenderer
+   *   hostCapabilities={{
+   *     openLinks: {},
+   *     serverTools: {},
+   *     serverResources: {},
+   *     logging: {},
+   *   }}
+   *   onCallTool={handleCallTool}
+   *   onReadResource={handleReadResource}
+   *   // ...
+   * />
+   * ```
+   */
+  hostCapabilities?: McpUiHostCapabilities;
 
   /** Name of the MCP tool to render UI for */
   toolName: string;
@@ -261,6 +292,7 @@ export interface AppRendererProps {
 export const AppRenderer = forwardRef<AppRendererHandle, AppRendererProps>((props, ref) => {
   const {
     client,
+    hostCapabilities,
     toolName,
     sandbox,
     toolResourceUri,
@@ -333,18 +365,19 @@ export const AppRenderer = forwardRef<AppRendererHandle, AppRendererProps>((prop
 
     const createBridge = () => {
       try {
-        const serverCapabilities = client?.getServerCapabilities();
+        // Use explicit hostCapabilities if provided, otherwise derive from client
+        const capabilities: McpUiHostCapabilities = hostCapabilities ?? {
+          openLinks: {},
+          serverTools: client?.getServerCapabilities()?.tools,
+          serverResources: client?.getServerCapabilities()?.resources,
+        };
         const bridge = new AppBridge(
           client ?? null,
           {
             name: 'MCP-UI Host',
             version: '1.0.0',
           },
-          {
-            openLinks: {},
-            serverTools: serverCapabilities?.tools,
-            serverResources: serverCapabilities?.resources,
-          },
+          capabilities,
         );
 
         // Register message handler
@@ -419,7 +452,7 @@ export const AppRenderer = forwardRef<AppRendererHandle, AppRendererProps>((prop
     return () => {
       mounted = false;
     };
-  }, [client]);
+  }, [client, hostCapabilities]);
 
   // Effect 2: Fetch HTML if not provided
   useEffect(() => {

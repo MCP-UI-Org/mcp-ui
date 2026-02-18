@@ -28,6 +28,7 @@ export {
 export {
   AppBridge,
   PostMessageTransport,
+  type McpUiHostCapabilities,
   type McpUiHostContext,
 } from '@modelcontextprotocol/ext-apps/app-bridge';
 

@@ -602,6 +602,87 @@ describe('<AppRenderer />', () => {
     });
   });
 
+  describe('hostCapabilities prop', () => {
+    it('should pass explicit hostCapabilities to AppBridge', async () => {
+      const { AppBridge } = await import('@modelcontextprotocol/ext-apps/app-bridge');
+
+      const customCapabilities = {
+        openLinks: {},
+        serverTools: {},
+        serverResources: {},
+        logging: {},
+      };
+
+      render(
+        <AppRenderer
+          {...defaultProps}
+          html="<html></html>"
+          hostCapabilities={customCapabilities}
+        />,
+      );
+
+      await waitFor(() => {
+        expect(screen.getByTestId('app-frame')).toBeInTheDocument();
+      });
+
+      expect(AppBridge).toHaveBeenCalledWith(
+        expect.anything(),
+        expect.anything(),
+        customCapabilities,
+      );
+    });
+
+    it('should derive capabilities from client when hostCapabilities is not provided', async () => {
+      const { AppBridge } = await import('@modelcontextprotocol/ext-apps/app-bridge');
+
+      render(<AppRenderer {...defaultProps} html="<html></html>" />);
+
+      await waitFor(() => {
+        expect(screen.getByTestId('app-frame')).toBeInTheDocument();
+      });
+
+      expect(AppBridge).toHaveBeenCalledWith(
+        expect.anything(),
+        expect.anything(),
+        {
+          openLinks: {},
+          serverTools: {},
+          serverResources: {},
+        },
+      );
+    });
+
+    it('should work with hostCapabilities and no client', async () => {
+      const { AppBridge } = await import('@modelcontextprotocol/ext-apps/app-bridge');
+
+      const customCapabilities = {
+        openLinks: {},
+        serverTools: {},
+        serverResources: {},
+        logging: {},
+      };
+
+      render(
+        <AppRenderer
+          toolName="test-tool"
+          sandbox={{ url: new URL('http://localhost:8081/sandbox.html') }}
+          html="<html></html>"
+          hostCapabilities={customCapabilities}
+        />,
+      );
+
+      await waitFor(() => {
+        expect(screen.getByTestId('app-frame')).toBeInTheDocument();
+      });
+
+      // Should pass null client but explicit capabilities
+      expect(AppBridge).toHaveBeenCalledWith(
+        null,
+        expect.anything(),
+        customCapabilities,
+      );
+    });
+  });
   describe('no client', () => {
     it('should work without client when html is provided', async () => {
       const props: AppRendererProps = {
