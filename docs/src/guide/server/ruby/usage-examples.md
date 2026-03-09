@@ -24,7 +24,7 @@ puts "Resource 1: #{JSON.pretty_generate(resource1)}"
 #   "type": "resource",
 #   "resource": {
 #     "uri": "ui://my-component/instance-1",
-#     "mimeType": "text/html",
+#     "mimeType": "text/html;profile=mcp-app",
 #     "text": "<p>Hello World</p>"
 #   }
 # }
@@ -41,7 +41,7 @@ puts "Resource 2 (blob will be Base64): #{JSON.pretty_generate(resource2)}"
 #   "type": "resource",
 #   "resource": {
 #     "uri": "ui://my-component/instance-2",
-#     "mimeType": "text/html",
+#     "mimeType": "text/html;profile=mcp-app",
 #     "blob": "PGgxPkNvbXBsZXggSFRNTDwvaDE+"
 #   }
 # }
@@ -59,7 +59,7 @@ puts "Resource 3: #{JSON.pretty_generate(resource3)}"
 #   "type": "resource",
 #   "resource": {
 #     "uri": "ui://analytics-dashboard/main",
-#     "mimeType": "text/uri-list",
+#     "mimeType": "text/html;profile=mcp-app",
 #     "text": "https://my.analytics.com/dashboard/123"
 #   }
 # }
@@ -77,7 +77,7 @@ puts "Resource 4 (blob will be Base64 of URL): #{JSON.pretty_generate(resource4)
 #   "type": "resource",
 #   "resource": {
 #     "uri": "ui://live-chart/session-xyz",
-#     "mimeType": "text/uri-list",
+#     "mimeType": "text/html;profile=mcp-app",
 #     "blob": "aHR0cHM6Ly9jaGFydHMuZXhhbXBsZS5jb20vYXBpP3R5cGU9cGllJmRhdGE9MSwyLDM="
 #   }
 # }

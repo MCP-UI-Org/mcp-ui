@@ -56,7 +56,7 @@ The adapter:
 ```typescript
 import { createUIResource } from '@mcp-ui/server';
 
-const widgetUI = createUIResource({
+const widgetUI = await createUIResource({
   uri: 'ui://my-server/widget',
   encoding: 'text',
   content: {
@@ -70,22 +70,17 @@ const widgetUI = createUIResource({
             window.addEventListener('message', (event) => {
               if (event.data.type === 'ui-lifecycle-iframe-render-data') {
                 const { toolInput, toolOutput } = event.data.payload.renderData;
-                document.getElementById('app').textContent = 
+                document.getElementById('app').textContent =
                   JSON.stringify({ toolInput, toolOutput }, null, 2);
               }
             });
-            
+
             // Signal that the widget is ready
             window.parent.postMessage({ type: 'ui-lifecycle-iframe-ready' }, '*');
           </script>
         </body>
       </html>
     `,
-  },
-  adapters: {
-    mcpApps: {
-      enabled: true,
-    },
   },
 });
 ```
@@ -101,7 +96,7 @@ import { z } from 'zod';
 const server = new McpServer({ name: 'my-server', version: '1.0.0' });
 
 // Create the UI resource (from step 1)
-const widgetUI = createUIResource({
+const widgetUI = await createUIResource({
   uri: 'ui://my-server/widget',
   // ... (same as above)
 });
@@ -164,15 +159,14 @@ registerAppTool(
     }
   },
   async ({ query }) => {
-    // Create an embedded UI resource for MCP-UI hosts (no adapter)
-    const embeddedResource = createUIResource({
+    // Create an embedded UI resource for MCP-UI hosts
+    const embeddedResource = await createUIResource({
       uri: `ui://my-server/widget/${query}`,
       encoding: 'text',
       content: {
         type: 'rawHtml',
         htmlString: renderWidget(query),  // Your widget HTML
       },
-      // No adapters - this is for MCP-UI hosts
     });
 
     return {
@@ -321,17 +315,15 @@ If you need to support both MCP Apps hosts and ChatGPT, create separate resource
 
 ```typescript
 // For MCP Apps hosts
-const mcpAppsResource = createUIResource({
+const mcpAppsResource = await createUIResource({
   uri: 'ui://my-server/widget-mcp-apps',
   content: { type: 'rawHtml', htmlString: widgetHtml },
-  adapters: { mcpApps: { enabled: true } },
 });
 
 // For ChatGPT/Apps SDK hosts
-const appsSdkResource = createUIResource({
+const appsSdkResource = await createUIResource({
   uri: 'ui://my-server/widget-apps-sdk',
   content: { type: 'rawHtml', htmlString: widgetHtml },
-  adapters: { appsSdk: { enabled: true } },
 });
 ```
 
@@ -356,7 +348,7 @@ app.use(express.json());
 
 const server = new McpServer({ name: 'demo', version: '1.0.0' });
 
-const graphUI = createUIResource({
+const graphUI = await createUIResource({
   uri: 'ui://demo/graph',
   encoding: 'text',
   content: {
@@ -374,30 +366,27 @@ const graphUI = createUIResource({
         <h1>graph</h1>
         <div class="data" id="data">Waiting for data...</div>
         <button onclick="sendPrompt()">Ask Follow-up</button>
-        
+
         <script>
           window.addEventListener('message', (e) => {
             if (e.data.type === 'ui-lifecycle-iframe-render-data') {
-              document.getElementById('data').textContent = 
+              document.getElementById('data').textContent =
                 JSON.stringify(e.data.payload.renderData, null, 2);
             }
           });
-          
+
           function sendPrompt() {
             window.parent.postMessage({
               type: 'prompt',
               payload: { prompt: 'Tell me more about this data' }
             }, '*');
           }
-          
+
           window.parent.postMessage({ type: 'ui-lifecycle-iframe-ready' }, '*');
         </script>
       </body>
       </html>
     `,
-  },
-  adapters: {
-    mcpApps: { enabled: true },
   },
 });
 
@@ -429,15 +418,14 @@ registerAppTool(
     }
   },
   async ({ title }) => {
-    // Create embedded resource for MCP-UI hosts (no adapter)
-    const embeddedResource = createUIResource({
+    // Create embedded resource for MCP-UI hosts
+    const embeddedResource = await createUIResource({
       uri: `ui://demo/graph/${encodeURIComponent(title)}`,
       encoding: 'text',
       content: {
         type: 'rawHtml',
         htmlString: `<html><body><h1>Graph: ${title}</h1></body></html>`,
       },
-      // No adapters - for MCP-UI hosts only
     });
 
     return {

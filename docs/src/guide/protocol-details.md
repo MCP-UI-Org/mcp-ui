@@ -73,11 +73,9 @@ export interface UIResource {
 - **`ui://<component-name>/<instance-id>`**
 
   - **Purpose**: For all UI resources.
-  - **Content**: `text` or `blob` contains either HTML string or URL string.
+  - **Content**: `text` or `blob` contains HTML content.
   - **Client Action**: Render in a sandboxed iframe
-  - **Examples**:
-    - HTML content: A custom button, a small form, a data visualization snippet
-    - URL content: Embedding a Grafana dashboard, a third-party widget, a mini-application
+  - **Examples**: A custom button, a small form, a data visualization snippet, a fetched external page
 
 ## Content encoding: `text` vs. `blob`
 
@@ -86,29 +84,9 @@ export interface UIResource {
   - **Pros**: Handles special characters robustly, can be better for larger payloads, ensures integrity during JSON transport.
   - **Cons**: Requires Base64 decoding on the client, slightly increases payload size.
 
-## URI List Format Support
+## External URL Handling
 
-When using `mimeType: 'text/uri-list'`, the content follows the standard URI list format (RFC 2483). However, **MCP-UI requires a single URL** for rendering. For security reasons, the protocol must be `http/s`.
-
-- **Single URL Requirement**: MCP-UI will use only the first valid URL found
-- **Multiple URLs**: If multiple URLs are provided, the client will use the first valid URL and log a warning about the ignored alternatives
-- **Comments**: Lines starting with `#` are treated as comments and ignored
-- **Empty lines**: Blank lines are ignored
-
-**Example URI List Content:**
-```
-# Primary dashboard URL
-https://dashboard.example.com/main
-
-# Backup dashboard URL (will be ignored but logged)
-https://backup.dashboard.example.com/main
-```
-
-**Client Behavior:**
-- Uses `https://dashboard.example.com/main` for rendering
-- Logs: `"Multiple URLs found in uri-list content. Using the first URL: "https://dashboard.example.com/main". Other URLs ignored: ["https://backup.dashboard.example.com/main"]"`
-
-This design allows for fallback URLs to be specified in the standard format while maintaining simple client implementation that focuses on a single primary URL.
+When using `createUIResource` with `content.type: 'externalUrl'`, the server SDK fetches the URL's HTML content and injects a `<base>` tag so relative paths (CSS, JS, images) resolve against the original URL. The resulting resource contains HTML content, not a bare URL string.
 
 ## Recommended Client-Side Pattern
 

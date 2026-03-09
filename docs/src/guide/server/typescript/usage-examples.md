@@ -23,7 +23,7 @@ import { z } from 'zod';
 const server = new McpServer({ name: 'my-server', version: '1.0.0' });
 
 // Create UI resource with MCP Apps protocol
-const widgetUI = createUIResource({
+const widgetUI = await createUIResource({
   uri: 'ui://my-server/widget',
   content: {
     type: 'rawHtml',
@@ -101,7 +101,7 @@ import {
 console.log('Shared Enum from server usage:', PlaceholderEnum.FOO);
 
 // Example 1: Direct HTML, delivered as text
-const resource1 = createUIResource({
+const resource1 = await createUIResource({
   uri: 'ui://my-component/instance-1',
   content: { type: 'rawHtml', htmlString: '<p>Hello World</p>' },
   encoding: 'text',
@@ -112,14 +112,14 @@ console.log('Resource 1:', JSON.stringify(resource1, null, 2));
   "type": "resource",
   "resource": {
     "uri": "ui://my-component/instance-1",
-    "mimeType": "text/html",
+    "mimeType": "text/html;profile=mcp-app",
     "text": "<p>Hello World</p>"
   }
 }
 */
 
 // Example 2: Direct HTML, delivered as a Base64 blob
-const resource2 = createUIResource({
+const resource2 = await createUIResource({
   uri: 'ui://my-component/instance-2',
   content: { type: 'rawHtml', htmlString: '<h1>Complex HTML</h1>' },
   encoding: 'blob',
@@ -133,52 +133,31 @@ console.log(
   "type": "resource",
   "resource": {
     "uri": "ui://my-component/instance-2",
-    "mimeType": "text/html",
-    "blob": "PGRpdj48aDI+Q29tcGxleCBDb250ZW50PC9oMj48c2NyaXB0PmNvbnNvbGUubG9nKFwiTG9hZGVkIVwiKTwvc2NyaXB0PjwvZGl2Pg=="
+    "mimeType": "text/html;profile=mcp-app",
+    "blob": "PGgxPkNvbXBsZXggSFRNTDwvaDE+"
   }
 }
 */
 
-// Example 3: External URL, text encoding
+// Example 3: External URL — fetches the page HTML and injects a <base> tag
 const dashboardUrl = 'https://my.analytics.com/dashboard/123';
-const resource3 = createUIResource({
+const resource3 = await createUIResource({
   uri: 'ui://analytics-dashboard/main',
   content: { type: 'externalUrl', iframeUrl: dashboardUrl },
   encoding: 'text',
 });
-console.log('Resource 3:', JSON.stringify(resource3, null, 2));
-/* Output for Resource 3:
-{
-  "type": "resource",
-  "resource": {
-    "uri": "ui://analytics-dashboard/main",
-    "mimeType": "text/html;profile=mcp-app",
-    "text": "https://my.analytics.com/dashboard/123"
-  }
-}
-*/
+// resource3.resource.text contains the fetched HTML with:
+//   <base href="https://my.analytics.com/dashboard/123">
+// injected so relative paths resolve correctly.
 
-// Example 4: External URL, blob encoding (URL is Base64 encoded)
+// Example 4: External URL, blob encoding (fetched HTML is Base64 encoded)
 const chartApiUrl = 'https://charts.example.com/api?type=pie&data=1,2,3';
-const resource4 = createUIResource({
+const resource4 = await createUIResource({
   uri: 'ui://live-chart/session-xyz',
   content: { type: 'externalUrl', iframeUrl: chartApiUrl },
   encoding: 'blob',
 });
-console.log(
-  'Resource 4 (blob will be Base64 of URL):',
-  JSON.stringify(resource4, null, 2),
-);
-/* Output for Resource 4:
-{
-  "type": "resource",
-  "resource": {
-    "uri": "ui://live-chart/session-xyz",
-    "mimeType": "text/html;profile=mcp-app",
-    "blob": "aHR0cHM6Ly9jaGFydHMuZXhhbXBsZS5jb20vYXBpP3R5cGU9cGllJmRhdGE9MSwyLDM="
-  }
-}
-*/
+// resource4.resource.blob contains the Base64-encoded fetched HTML.
 
 // These resource objects would then be included in the 'content' array
 // of a toolResult in an MCP interaction.
@@ -192,7 +171,7 @@ The `createUIResource` function supports several types of metadata configuration
 import { createUIResource } from '@mcp-ui/server';
 
 // Example 7: Using standard metadata
-const resourceWithMetadata = createUIResource({
+const resourceWithMetadata = await createUIResource({
   uri: 'ui://analytics/dashboard',
   content: { type: 'rawHtml', htmlString: '<div id="dashboard">Loading...</div>' },
   encoding: 'text',
@@ -210,7 +189,7 @@ console.log('Resource with metadata:', JSON.stringify(resourceWithMetadata, null
   "type": "resource",
   "resource": {
     "uri": "ui://analytics/dashboard",
-    "mimeType": "text/html",
+    "mimeType": "text/html;profile=mcp-app",
     "text": "<div id=\"dashboard\">Loading...</div>",
     "_meta": {
       "title": "Analytics Dashboard",
@@ -224,16 +203,16 @@ console.log('Resource with metadata:', JSON.stringify(resourceWithMetadata, null
 */
 
 // Example 8: Using uiMetadata for client-side configuration
-const resourceWithUIMetadata = createUIResource({
+const resourceWithUIMetadata = await createUIResource({
   uri: 'ui://chart/interactive',
-  content: { type: 'externalUrl', iframeUrl: 'https://charts.example.com/widget' },
+  content: { type: 'rawHtml', htmlString: '<div id="chart">Loading...</div>' },
   encoding: 'text',
   uiMetadata: {
     'preferred-frame-size': ['800px', '600px'],
-    'initial-render-data': { 
-      theme: 'dark', 
+    'initial-render-data': {
+      theme: 'dark',
       chartType: 'bar',
-      dataSet: 'quarterly-sales' 
+      dataSet: 'quarterly-sales'
     },
   }
 });
@@ -244,13 +223,13 @@ console.log('Resource with UI metadata:', JSON.stringify(resourceWithUIMetadata,
   "resource": {
     "uri": "ui://chart/interactive",
     "mimeType": "text/html;profile=mcp-app",
-    "text": "https://charts.example.com/widget",
+    "text": "<div id=\"chart\">Loading...</div>",
     "_meta": {
       "mcpui.dev/ui-preferred-frame-size": ["800px", "600px"],
-      "mcpui.dev/ui-initial-render-data": { 
-        "theme": "dark", 
+      "mcpui.dev/ui-initial-render-data": {
+        "theme": "dark",
         "chartType": "bar",
-        "dataSet": "quarterly-sales" 
+        "dataSet": "quarterly-sales"
       },
     }
   }
@@ -258,7 +237,7 @@ console.log('Resource with UI metadata:', JSON.stringify(resourceWithUIMetadata,
 */
 
 // Example 9: Using embeddedResourceProps for additional MCP properties
-const resourceWithProps = createUIResource({
+const resourceWithProps = await createUIResource({
   uri: 'ui://form/user-profile',
   content: { type: 'rawHtml', htmlString: '<form id="profile">...</form>' },
   encoding: 'text',
@@ -275,7 +254,7 @@ console.log('Resource with additional props:', JSON.stringify(resourceWithProps,
   "type": "resource",
   "resource": {
     "uri": "ui://form/user-profile",
-    "mimeType": "text/html",
+    "mimeType": "text/html;profile=mcp-app",
     "text": "<form id=\"profile\">...</form>",
   },
   "annotations": {
@@ -302,13 +281,13 @@ The `createUIResource` function will throw errors if invalid combinations are pr
 
 ```typescript
 try {
-  createUIResource({
+  await createUIResource({
     uri: 'invalid://should-be-ui',
     content: { type: 'externalUrl', iframeUrl: 'https://example.com' },
     encoding: 'text',
   });
 } catch (e: any) {
   console.error('Caught expected error:', e.message);
-  // MCP-UI SDK: URI must start with 'ui://' when content.type is 'externalUrl'.
+  // MCP-UI SDK: URI must start with 'ui://'.
 }
 ```

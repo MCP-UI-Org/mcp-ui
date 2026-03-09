@@ -27,7 +27,7 @@ The MCP Apps pattern uses three key concepts:
 
 ```typescript
 // 1. Create UI content
-const widgetUI = createUIResource({
+const widgetUI = await createUIResource({
   uri: 'ui://my-server/widget',
   content: { type: 'rawHtml', htmlString: '<h1>Widget</h1>' },
   encoding: 'text',
@@ -55,7 +55,7 @@ When a host calls `show_widget`, it sees the `_meta.ui.resourceUri` and fetches 
 The `@mcp-ui/*` packages provide everything needed to build and render MCP Apps:
 
 ### Server SDK (`@mcp-ui/server`)
-- **`createUIResource`**: Creates UI resource objects with HTML content or external URLs
+- **`createUIResource`**: Creates UI resource objects with HTML content or fetched external URLs
 - Works with `registerAppTool` and `registerAppResource` from `@modelcontextprotocol/ext-apps/server`
 
 ### Client SDK (`@mcp-ui/client`)
@@ -99,7 +99,7 @@ import { z } from 'zod';
 
 const server = new McpServer({ name: 'my-server', version: '1.0.0' });
 
-const dashboardUI = createUIResource({
+const dashboardUI = await createUIResource({
   uri: 'ui://my-tool/dashboard',
   content: { type: 'rawHtml', htmlString: '<h1>Dashboard</h1>' },
   encoding: 'text'

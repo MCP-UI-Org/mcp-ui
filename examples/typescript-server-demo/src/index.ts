@@ -64,7 +64,7 @@ app.post('/mcp', async (req, res) => {
       async () => {
         // Create the UI resource to be returned to the client
         // This is the only MCP-UI specific code in this example
-        const uiResource = createUIResource({
+        const uiResource = await createUIResource({
           uri: 'ui://greeting',
           content: { type: 'externalUrl', iframeUrl: 'https://example.com' },
           encoding: 'text',
@@ -84,7 +84,7 @@ app.post('/mcp', async (req, res) => {
         inputSchema: {},
       },
       async () => {
-        const uiResource = createUIResource({
+        const uiResource = await createUIResource({
           uri: 'ui://raw-html-demo',
           content: { type: 'rawHtml', htmlString: '<h1>Hello from Raw HTML</h1>' },
           encoding: 'text',

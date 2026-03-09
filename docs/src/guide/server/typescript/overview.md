@@ -13,7 +13,7 @@ import { createUIResource } from '@mcp-ui/server';
 import { z } from 'zod';
 
 // 1. Create UI content
-const widgetUI = createUIResource({
+const widgetUI = await createUIResource({
   uri: 'ui://my-server/widget',
   content: { type: 'rawHtml', htmlString: '<h1>Widget</h1>' },
   encoding: 'text',
@@ -36,8 +36,8 @@ registerAppTool(server, 'show_widget', {
 
 ## Key Exports
 
-- **`createUIResource(options: CreateUIResourceOptions): UIResource`**:
-  Creates UI resource objects. Use with `registerAppTool` and `registerAppResource` from `@modelcontextprotocol/ext-apps/server`.
+- **`createUIResource(options: CreateUIResourceOptions): Promise<UIResource>`**:
+  Creates UI resource objects. For `externalUrl` content, fetches the URL and injects a `<base>` tag. Use with `registerAppTool` and `registerAppResource` from `@modelcontextprotocol/ext-apps/server`.
 
 ## Purpose
 

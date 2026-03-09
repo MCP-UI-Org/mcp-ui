@@ -61,7 +61,7 @@ import { registerAppTool, registerAppResource } from '@modelcontextprotocol/ext-
 import { createUIResource } from '@mcp-ui/server';
 
 // 1. Create UI resource
-const widgetUI = createUIResource({
+const widgetUI = await createUIResource({
   uri: 'ui://my-server/widget',
   content: { type: 'rawHtml', htmlString: '<h1>Widget</h1>' },
   encoding: 'text',
@@ -93,15 +93,15 @@ interface UIResource {
   type: 'resource';
   resource: {
     uri: string;       // e.g., ui://component/id
-    mimeType: 'text/html' | 'text/uri-list' | 'application/vnd.mcp-ui.remote-dom';
-    text?: string;      // Inline HTML, external URL, or remote-dom script
-    blob?: string;      // Base64-encoded content
+    mimeType: 'text/html;profile=mcp-app';
+    text?: string;      // HTML content
+    blob?: string;      // Base64-encoded HTML content
   };
 }
 ```
 
 * **`uri`**: Unique identifier using `ui://` scheme
-* **`mimeType`**: `text/html` for HTML, `text/uri-list` for URLs, `text/html;profile=mcp-app` for MCP Apps
+* **`mimeType`**: `text/html;profile=mcp-app` — the MCP Apps standard MIME type
 * **`text` vs. `blob`**: Plain text or Base64-encoded content
 
 ### Client Components
@@ -193,59 +193,20 @@ For Apps SDK environments (e.g., ChatGPT), this adapter translates MCP-UI protoc
 ```ts
 import { createUIResource } from '@mcp-ui/server';
 
-const htmlResource = createUIResource({
+const htmlResource = await createUIResource({
   uri: 'ui://greeting/1',
-  content: { 
-    type: 'rawHtml', 
+  content: {
+    type: 'rawHtml',
     htmlString: `
       <button onclick="window.parent.postMessage({ type: 'tool', payload: { toolName: 'myTool', params: {} } }, '*')">
         Call Tool
       </button>
-    ` 
+    `
   },
   encoding: 'text',
-  // Enable adapters
-  adapters: {
-    appsSdk: {
-      enabled: true,
-      config: ...
-    }
-    // Future adapters can be enabled here
-  }
 });
 ```
 
-The adapter scripts are automatically injected into your HTML content and handle all protocol translation.
-
-**Supported Actions:**
-- ✅ **Tool calls** - `{ type: 'tool', payload: { toolName, params } }`
-- ✅ **Prompts** - `{ type: 'prompt', payload: { prompt } }`
-- ✅ **Intents** - `{ type: 'intent', payload: { intent, params } }` (converted to prompts)
-- ✅ **Notifications** - `{ type: 'notify', payload: { message } }`
-- ✅ **Render data** - Access to `toolInput`, `toolOutput`, `widgetState`, `theme`, `locale`
-- ⚠️ **Links** - `{ type: 'link', payload: { url } }` (may not be supported, returns error in some environments)
-
-#### Advanced Usage
-
-You can manually wrap HTML with adapters or access adapter scripts directly:
-
-```ts
-import { wrapHtmlWithAdapters, getAppsSdkAdapterScript } from '@mcp-ui/server';
-
-// Manually wrap HTML with adapters
-const wrappedHtml = wrapHtmlWithAdapters(
-  '<button>Click me</button>',
-  {
-    appsSdk: {
-      enabled: true,
-      config: { intentHandling: 'ignore' }
-    }
-  }
-);
-
-// Get a specific adapter script
-const appsSdkScript = getAppsSdkAdapterScript({ timeout: 60000 });
-```
 
 ## 🏗️ Installation
 
@@ -295,7 +256,7 @@ You can use [GitMCP](https://gitmcp.io/idosal/mcp-ui) to give your IDE access to
    const server = new McpServer({ name: 'my-server', version: '1.0.0' });
 
    // Create UI resource
-   const widgetUI = createUIResource({
+   const widgetUI = await createUIResource({
      uri: 'ui://my-server/widget',
      content: { type: 'rawHtml', htmlString: '<h1>Interactive Widget</h1>' },
      encoding: 'text',

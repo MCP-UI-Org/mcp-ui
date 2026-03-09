@@ -49,7 +49,7 @@ import { z } from 'zod';
 const server = new McpServer({ name: 'my-server', version: '1.0.0' });
 
 // 2. Create the UI resource with interactive HTML
-const widgetUI = createUIResource({
+const widgetUI = await createUIResource({
   uri: 'ui://my-server/widget',
   content: {
     type: 'rawHtml',
@@ -195,33 +195,30 @@ Or provide pre-fetched HTML directly:
 
 MCP Apps supports several UI content types:
 
-### 1. HTML Resources (`text/html`)
+### 1. HTML Resources
 
 Direct HTML content rendered in a sandboxed iframe:
 
 ```typescript
-const htmlResource = createUIResource({
+const htmlResource = await createUIResource({
   uri: 'ui://my-tool/widget',
   content: { type: 'rawHtml', htmlString: '<h1>Hello World</h1>' },
   encoding: 'text',
 });
 ```
 
-### 2. External URLs (Legacy)
+### 2. External URLs
 
-External applications embedded via iframe:
+Fetch an external page's HTML and serve it as a UI resource. The SDK fetches the URL's contents server-side and injects a `<base>` tag so relative paths (CSS, JS, images) resolve correctly:
 
 ```typescript
-const urlResource = createUIResource({
+const urlResource = await createUIResource({
   uri: 'ui://my-tool/external',
   content: { type: 'externalUrl', iframeUrl: 'https://example.com' },
   encoding: 'text',
 });
+// The resource now contains the fetched HTML with a <base href="https://example.com"> tag
 ```
-
-::: warning External URLs
-External URLs now use the same MIME type (`text/html;profile=mcp-app`) as raw HTML. Host support for external URLs varies - some hosts may detect URL content and embed it in an iframe, while others may not support this content type.
-:::
 
 ## Declaring UI Extension Support
 

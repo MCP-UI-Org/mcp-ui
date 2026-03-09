@@ -61,8 +61,8 @@ interface UIResource {
   resource: {
     uri: string;       // e.g., ui://component/id
     mimeType: 'text/html;profile=mcp-app';
-    text?: string;      // Inline HTML or external URL
-    blob?: string;      // Base64-encoded HTML or URL
+    text?: string;      // HTML content
+    blob?: string;      // Base64-encoded HTML content
   };
 }
 ```
@@ -115,14 +115,14 @@ You can use [GitMCP](https://gitmcp.io/idosal/mcp-ui) to give your IDE access to
    import { createUIResource } from '@mcp-ui/server';
 
    // Inline HTML
-   const htmlResource = createUIResource({
+   const htmlResource = await createUIResource({
      uri: 'ui://greeting/1',
      content: { type: 'rawHtml', htmlString: '<p>Hello, MCP UI!</p>' },
      encoding: 'text',
    });
 
-   // External URL
-   const externalUrlResource = createUIResource({
+   // External URL (fetches the page HTML and injects a <base> tag)
+   const externalUrlResource = await createUIResource({
      uri: 'ui://greeting/1',
      content: { type: 'externalUrl', iframeUrl: 'https://example.com' },
      encoding: 'text',
