@@ -88,6 +88,10 @@ export interface UIResource {
 
 When using `createUIResource` with `content.type: 'externalUrl'`, the server SDK fetches the URL's HTML content and injects a `<base>` tag so relative paths (CSS, JS, images) resolve against the original URL. The resulting resource contains HTML content, not a bare URL string.
 
+The SDK also automatically populates `_meta.csp.baseUriDomains` with the external URL's origin, so the host's sandbox iframe can set appropriate CSP headers to allow loading the fetched page's resources.
+
+> **Note:** Not all hosts support `baseUriDomains`. Those that don't will ignore this field, which may cause the `<base>` tag to be blocked by the sandbox CSP.
+
 ## Recommended Client-Side Pattern
 
 Client-side hosts should check for the `ui://` URI scheme to identify MCP-UI resources:

@@ -37,7 +37,7 @@ registerAppTool(server, 'show_widget', {
 ## Key Exports
 
 - **`createUIResource(options: CreateUIResourceOptions): Promise<UIResource>`**:
-  Creates UI resource objects. For `externalUrl` content, fetches the URL and injects a `<base>` tag. Use with `registerAppTool` and `registerAppResource` from `@modelcontextprotocol/ext-apps/server`.
+  Creates UI resource objects. For `externalUrl` content, fetches the URL, injects a `<base>` tag, and auto-populates `_meta.csp.baseUriDomains` with the external origin. Use with `registerAppTool` and `registerAppResource` from `@modelcontextprotocol/ext-apps/server`.
 
 ## Purpose
 

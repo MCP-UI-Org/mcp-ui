@@ -1,5 +1,6 @@
 import { describe, it, expect, vi } from 'vitest';
 import {
+  extractOrigin,
   fetchExternalUrl,
   getAdditionalResourceProps,
   injectBaseTag,
@@ -183,6 +184,20 @@ describe('injectBaseTag', () => {
     expect(injectBaseTag(html, 'https://example.com/a?b=1&c="2"')).toBe(
       '<head><base href="https://example.com/a?b=1&amp;c=&quot;2&quot;"></head>',
     );
+  });
+});
+
+describe('extractOrigin', () => {
+  it('should extract origin from a valid URL', () => {
+    expect(extractOrigin('https://example.com/page?q=1')).toBe('https://example.com');
+  });
+
+  it('should include port if non-default', () => {
+    expect(extractOrigin('https://example.com:8080/path')).toBe('https://example.com:8080');
+  });
+
+  it('should return undefined for invalid URLs', () => {
+    expect(extractOrigin('not a url')).toBeUndefined();
   });
 });
 

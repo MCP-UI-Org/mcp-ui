@@ -48,7 +48,7 @@ describe('@mcp-ui/server', () => {
         vi.unstubAllGlobals();
       });
 
-      it('should fetch external URL and inject <base> tag', async () => {
+      it('should fetch external URL, inject <base> tag, and set CSP resourceDomains', async () => {
         const resource = await createUIResource({
           uri: 'ui://test-url' as const,
           content: { type: 'externalUrl' as const, iframeUrl: 'https://example.com/page' },
@@ -62,6 +62,10 @@ describe('@mcp-ui/server', () => {
           '<html><head><base href="https://example.com/page"><title>Test</title></head><body>Hello</body></html>',
         );
         expect(resource.resource.blob).toBeUndefined();
+        // CSP resourceDomains should contain the external origin
+        expect(resource.resource._meta).toEqual({
+          csp: { baseUriDomains: ['https://example.com'] },
+        });
       });
 
       it('should fetch and encode as blob', async () => {
@@ -90,6 +94,7 @@ describe('@mcp-ui/server', () => {
         expect(resource.resource._meta).toEqual({
           [`${UI_METADATA_PREFIX}preferred-frame-size`]: ['100px', '100px'],
           'arbitrary-prop': 'arbitrary',
+          csp: { baseUriDomains: ['https://example.com'] },
         });
       });
 
@@ -102,7 +107,11 @@ describe('@mcp-ui/server', () => {
           resourceProps: { _meta: { 'arbitrary-prop': 'arbitrary2' } },
         });
 
-        expect(resource.resource._meta).toEqual({ foo: 'bar', 'arbitrary-prop': 'arbitrary2' });
+        expect(resource.resource._meta).toEqual({
+          foo: 'bar',
+          'arbitrary-prop': 'arbitrary2',
+          csp: { baseUriDomains: ['https://example.com'] },
+        });
       });
 
       it('should include embedded resource props', async () => {
@@ -123,6 +132,37 @@ describe('@mcp-ui/server', () => {
         expect(resource.resource._meta).toEqual({
           'arbitrary-metadata': 'resource-level-metadata',
           [`${UI_METADATA_PREFIX}preferred-frame-size`]: ['100px', '100px'],
+          csp: { baseUriDomains: ['https://example.com'] },
+        });
+      });
+
+      it('should merge with existing CSP baseUriDomains without duplicating', async () => {
+        const resource = await createUIResource({
+          uri: 'ui://test-url' as const,
+          content: { type: 'externalUrl' as const, iframeUrl: 'https://example.com/page' },
+          encoding: 'text' as const,
+          resourceProps: {
+            _meta: { csp: { baseUriDomains: ['https://cdn.other.com'] } },
+          },
+        });
+
+        expect(resource.resource._meta).toEqual({
+          csp: { baseUriDomains: ['https://cdn.other.com', 'https://example.com'] },
+        });
+      });
+
+      it('should not duplicate origin if already present in CSP baseUriDomains', async () => {
+        const resource = await createUIResource({
+          uri: 'ui://test-url' as const,
+          content: { type: 'externalUrl' as const, iframeUrl: 'https://example.com/page' },
+          encoding: 'text' as const,
+          resourceProps: {
+            _meta: { csp: { baseUriDomains: ['https://example.com'] } },
+          },
+        });
+
+        expect(resource.resource._meta).toEqual({
+          csp: { baseUriDomains: ['https://example.com'] },
         });
       });
 

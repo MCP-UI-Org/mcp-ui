@@ -46,6 +46,18 @@ function escapeHtmlAttr(str: string): string {
   return str.replace(/&/g, '&amp;').replace(/"/g, '&quot;');
 }
 
+/**
+ * Extracts the origin (scheme + host) from a URL string.
+ * Returns undefined if the URL is invalid.
+ */
+export function extractOrigin(url: string): string | undefined {
+  try {
+    return new URL(url).origin;
+  } catch {
+    return undefined;
+  }
+}
+
 export function getAdditionalResourceProps(
   resourceOptions: Partial<CreateUIResourceOptions>,
 ): UIResourceProps {

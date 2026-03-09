@@ -6,6 +6,7 @@ import {
   RESOURCE_MIME_TYPE,
 } from './types.js';
 import {
+  extractOrigin,
   fetchExternalUrl,
   getAdditionalResourceProps,
   utf8ToBase64,
@@ -36,6 +37,8 @@ export async function createUIResource(options: CreateUIResourceOptions): Promis
     throw new Error("MCP-UI SDK: URI must start with 'ui://'.");
   }
 
+  let externalOrigin: string | undefined;
+
   if (options.content.type === 'rawHtml') {
     actualContentString = options.content.htmlString;
     if (typeof actualContentString !== 'string') {
@@ -51,10 +54,25 @@ export async function createUIResource(options: CreateUIResourceOptions): Promis
       );
     }
     actualContentString = await fetchExternalUrl(iframeUrl);
+    externalOrigin = extractOrigin(iframeUrl);
   } else {
     // This case should ideally be prevented by TypeScript's discriminated union checks
     const exhaustiveCheckContent: never = options.content;
     throw new Error(`MCP-UI SDK: Invalid content.type specified: ${exhaustiveCheckContent}`);
+  }
+
+  const additionalProps = getAdditionalResourceProps(options);
+
+  // For externalUrl, auto-populate _meta.csp.baseUriDomains with the origin
+  // so the sandbox iframe's CSP base-uri directive allows the injected <base> tag.
+  if (externalOrigin) {
+    const meta = (additionalProps._meta ?? {}) as Record<string, unknown>;
+    const existingCsp = (meta.csp ?? {}) as Record<string, unknown>;
+    const existingDomains = (existingCsp.baseUriDomains ?? []) as string[];
+    if (!existingDomains.includes(externalOrigin)) {
+      meta.csp = { ...existingCsp, baseUriDomains: [...existingDomains, externalOrigin] };
+    }
+    additionalProps._meta = meta;
   }
 
   let resource: UIResource['resource'];
@@ -65,7 +83,7 @@ export async function createUIResource(options: CreateUIResourceOptions): Promis
         uri: options.uri,
         mimeType,
         text: actualContentString,
-        ...getAdditionalResourceProps(options),
+        ...additionalProps,
       };
       break;
     case 'blob':
@@ -73,7 +91,7 @@ export async function createUIResource(options: CreateUIResourceOptions): Promis
         uri: options.uri,
         mimeType,
         blob: utf8ToBase64(actualContentString),
-        ...getAdditionalResourceProps(options),
+        ...additionalProps,
       };
       break;
     default: {
