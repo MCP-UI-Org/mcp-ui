@@ -11,25 +11,21 @@ module McpUiServer
   # MIME type constants
   MIME_TYPE_HTML = 'text/html'
   MIME_TYPE_URI_LIST = 'text/uri-list'
-  MIME_TYPE_REMOTE_DOM = 'application/vnd.mcp-ui.remote-dom+javascript; framework=%s'
 
   # Content type constants
   CONTENT_TYPE_RAW_HTML = :raw_html
   CONTENT_TYPE_EXTERNAL_URL = :external_url
-  CONTENT_TYPE_REMOTE_DOM = :remote_dom
 
   # Protocol mapping (snake_case to camelCase for protocol consistency)
   PROTOCOL_CONTENT_TYPES = {
     raw_html: 'rawHtml',
-    external_url: 'externalUrl',
-    remote_dom: 'remoteDom'
+    external_url: 'externalUrl'
   }.freeze
 
   # Required content keys for each content type
   REQUIRED_CONTENT_KEYS = {
     CONTENT_TYPE_RAW_HTML => :htmlString,
-    CONTENT_TYPE_EXTERNAL_URL => :iframeUrl,
-    CONTENT_TYPE_REMOTE_DOM => :script
+    CONTENT_TYPE_EXTERNAL_URL => :iframeUrl
   }.freeze
 
   # URI scheme constant
@@ -40,11 +36,9 @@ module McpUiServer
   #
   # @param uri [String] The unique identifier for the resource (e.g., 'ui://greeting/1').
   # @param content [Hash] A hash describing the UI content.
-  #   - :type [Symbol] The type of content. One of :raw_html, :external_url, or :remote_dom.
+  #   - :type [Symbol] The type of content. One of :raw_html or :external_url.
   #   - :htmlString [String] The raw HTML content (required if type is :raw_html).
   #   - :iframeUrl [String] The URL for an external page (required if type is :external_url).
-  #   - :script [String] The remote-dom script (required if type is :remote_dom).
-  #   - :framework [Symbol] The remote-dom framework, e.g., :react or :webcomponents (required, for :remote_dom).
   # @param encoding [Symbol] The encoding method. :text for plain string, :blob for base64 encoded.
   #
   # @return [Hash] A UIResource hash ready to be included in an MCP response.
@@ -89,8 +83,6 @@ module McpUiServer
       process_raw_html_content(content, resource)
     when CONTENT_TYPE_EXTERNAL_URL
       process_external_url_content(content, resource)
-    when CONTENT_TYPE_REMOTE_DOM
-      process_remote_dom_content(content, resource)
     end
   end
   private_class_method :process_content
@@ -108,14 +100,6 @@ module McpUiServer
     content.fetch(required_key) { raise Error, "Missing required key :#{required_key} for external_url content" }
   end
   private_class_method :process_external_url_content
-
-  def self.process_remote_dom_content(content, resource)
-    framework = content.fetch(:framework) { raise Error, 'Missing required key :framework for remote_dom content' }
-    resource[:mimeType] = MIME_TYPE_REMOTE_DOM % framework
-    required_key = REQUIRED_CONTENT_KEYS[CONTENT_TYPE_REMOTE_DOM]
-    content.fetch(required_key) { raise Error, "Missing required key :#{required_key} for remote_dom content" }
-  end
-  private_class_method :process_remote_dom_content
 
   def self.process_encoding(encoding, resource, content_value)
     case encoding

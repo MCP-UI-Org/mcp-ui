@@ -124,9 +124,7 @@ registerAppTool(
 ```
 
 ::: tip MCP Apps Protocol
-The example above uses the [`@modelcontextprotocol/ext-apps`](https://github.com/modelcontextprotocol/ext-apps) `App` class for communication. This is the recommended approach for MCP Apps hosts. See [Protocol Details](./protocol-details) for the full JSON-RPC API.
-
-For legacy MCP-UI hosts, you can use the simpler postMessage protocol with the [MCP Apps Adapter](./mcp-apps).
+The example above uses the [`@modelcontextprotocol/ext-apps`](https://github.com/modelcontextprotocol/ext-apps) `App` class for communication. See [Protocol Details](./protocol-details) for the full JSON-RPC API.
 :::
 
 ### Client Side
@@ -247,56 +245,6 @@ const client = new Client(
 );
 ```
 
-## Legacy MCP-UI Pattern
-
-For hosts that don't yet support MCP Apps, you can embed UI resources directly in tool responses:
-
-### Server Side (Legacy)
-
-```typescript
-import { createUIResource } from '@mcp-ui/server';
-
-// Create resource
-const resource = createUIResource({
-  uri: 'ui://my-tool/widget',
-  content: { type: 'rawHtml', htmlString: '<h1>Widget</h1>' },
-  encoding: 'text',
-});
-
-// Return embedded in tool response
-return { content: [resource] };
-```
-
-### Client Side (Legacy)
-
-```tsx
-import { UIResourceRenderer } from '@mcp-ui/client';
-
-function LegacyToolUI({ mcpResponse }) {
-  return (
-    <div>
-      {mcpResponse.content.map((item) => {
-        if (item.type === 'resource' && item.resource.uri?.startsWith('ui://')) {
-          return (
-            <UIResourceRenderer
-              key={item.resource.uri}
-              resource={item.resource}
-              onUIAction={(result) => {
-                console.log('Action:', result);
-                return { status: 'handled' };
-              }}
-            />
-          );
-        }
-        return null;
-      })}
-    </div>
-  );
-}
-```
-
-For more on supporting both MCP Apps and legacy hosts, see [Legacy MCP-UI Adapter](./mcp-apps).
-
 ## Building from Source
 
 ### Clone and Install
@@ -327,7 +275,5 @@ pnpm test
   - [Python SDK Usage & Examples](./server/python/usage-examples.md)
 - **Client SDK**: Learn how to render resources.
   - [Client Overview](./client/overview.md)
-  - [AppRenderer Component](./client/resource-renderer.md)
 - **Protocol & Components**:
   - [Protocol Details](./protocol-details.md)
-  - [Legacy MCP-UI Adapter](./mcp-apps.md)

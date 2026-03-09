@@ -20,7 +20,6 @@
   "devDependencies": {
     "@types/node": "^18.19.100",
     "@vitest/coverage-v8": "^1.0.0",
-    "esbuild": "^0.19.0",
     "typescript": "^5.0.0",
     "vite": "^5.0.0",
     "vite-plugin-dts": "^3.6.0",
@@ -28,8 +27,6 @@
   },
   "scripts": {
     "prepublishOnly": "pnpm run build",
-    "prebuild": "pnpm run bundle:adapter",
-    "bundle:adapter": "node scripts/bundle-adapter.js",
     "dev": "vite",
     "build": "vite build",
     "test": "vitest run",

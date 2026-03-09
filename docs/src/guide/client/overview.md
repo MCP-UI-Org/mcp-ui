@@ -1,23 +1,18 @@
 # @mcp-ui/client Overview
 
-The `@mcp-ui/client` package provides components for rendering MCP tool UIs in your host application. It supports both MCP Apps (the standard) and legacy MCP-UI hosts.
+The `@mcp-ui/client` package provides components for rendering MCP tool UIs in your host application using the MCP Apps standard.
 
 ## What's Included?
 
-### MCP Apps Components (Recommended)
+### MCP Apps Components
 - **`<AppRenderer />`**: High-level component for MCP Apps hosts. Fetches resources, handles lifecycle, renders tool UIs.
 - **`<AppFrame />`**: Lower-level component for when you have pre-fetched HTML and an AppBridge instance.
 - **`AppBridge`**: Handles JSON-RPC communication between host and guest UI.
 
-### Legacy MCP-UI Components
-- **`<UIResourceRenderer />`**: For legacy hosts that embed resources in tool responses. Inspects `mimeType` and renders `<HTMLResourceRenderer />` or `<RemoteDOMResourceRenderer />` internally.
-- **`<HTMLResourceRenderer />`**: Internal component for HTML/URL resources
-- **`<RemoteDOMResourceRenderer />`**: Internal component for remote DOM resources
-- **`isUIResource()`**: Utility function to check if content is a UI resource
-
 ### Utility Functions
 - **`getResourceMetadata(resource)`**: Extracts the resource's `_meta` content (standard MCP metadata)
 - **`getUIResourceMetadata(resource)`**: Extracts only the MCP-UI specific metadata keys (prefixed with `mcpui.dev/ui-`) from the resource's `_meta` content
+- **`isUIResource()`**: Utility function to check if content is a UI resource
 - **`UI_EXTENSION_CAPABILITIES`**: Declares UI extension support for your MCP client
 
 ## Purpose
@@ -27,8 +22,6 @@ The `@mcp-ui/client` package provides components for rendering MCP tool UIs in y
 - **Interactivity**: JSON-RPC communication between host and guest UI
 
 ## Quick Example: AppRenderer
-
-For MCP Apps hosts (recommended):
 
 ```tsx
 import { AppRenderer } from '@mcp-ui/client';
@@ -50,17 +43,6 @@ function ToolUI({ client, toolName, toolInput, toolResult }) {
     />
   );
 }
-```
-
-For legacy MCP-UI hosts:
-
-```tsx
-import { UIResourceRenderer } from '@mcp-ui/client';
-
-<UIResourceRenderer
-  resource={mcpResource.resource}
-  onUIAction={(action) => console.log('Action:', action)}
-/>
 ```
 
 ## Building
@@ -134,39 +116,9 @@ console.log(uiMetadata);
 // }
 ```
 
-### Usage Examples
-
-These utility functions are particularly useful when you need to access metadata programmatically:
-
-```typescript
-import { getUIResourceMetadata, UIResourceRenderer } from '@mcp-ui/client';
-
-function SmartResourceRenderer({ resource }) {
-  const uiMetadata = getUIResourceMetadata(resource);
-  
-  // Use metadata to make rendering decisions
-  const initialRenderData = uiMetadata['initial-render-data'];
-  const containerClass = initialRenderData.preferredContext === 'hero' ? 'hero-container' : 'default-container';
-  
-  return (
-    <div className={containerClass}>
-      {preferredContext === 'hero' && (
-        <h2>Featured Component</h2>
-      )}
-      <UIResourceRenderer resource={resource} />
-    </div>
-  );
-}
-```
-
 ## See More
 
 See the following pages for more details:
 
 - [Client SDK Walkthrough](./walkthrough.md) - **Step-by-step guide to building an MCP Apps client**
-- [AppRenderer Component](./app-renderer.md) - **Full API reference for the recommended MCP Apps renderer**
-- [UIResourceRenderer Component](./resource-renderer.md) - Legacy MCP-UI renderer (deprecated)
-- [HTMLResourceRenderer Component](./html-resource.md)
-- [RemoteDOMResourceRenderer Component](./remote-dom-resource.md)
-- [React Usage & Examples](./react-usage-examples.md)
-- [Web Component Usage & Examples](./wc-usage-examples.md)
+- [AppRenderer Component](./app-renderer.md) - **Full API reference for the MCP Apps renderer**

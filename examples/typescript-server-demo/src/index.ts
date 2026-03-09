@@ -96,35 +96,6 @@ app.post('/mcp', async (req, res) => {
       },
     );
 
-    server.registerTool(
-      'showRemoteDom',
-      {
-        title: 'Show Remote DOM',
-        description: 'Creates a UI resource displaying a remote DOM script.',
-        inputSchema: {},
-      },
-      async () => {
-        const remoteDomScript = `
-        const p = document.createElement('ui-text');
-        p.textContent = 'This is a remote DOM element from the server.';
-        root.appendChild(p);
-      `;
-        const uiResource = createUIResource({
-          uri: 'ui://remote-dom-demo',
-          content: {
-            type: 'remoteDom',
-            script: remoteDomScript,
-            framework: 'react',
-          },
-          encoding: 'text',
-        });
-
-        return {
-          content: [uiResource],
-        };
-      },
-    );
-
     // Connect the server instance to the transport for this session.
     await server.connect(transport);
   } else {

@@ -50,28 +50,6 @@ def show_raw_html() -> list[UIResource]:
 
 
 @mcp.tool()
-def show_remote_dom() -> list[UIResource]:
-    """Creates a UI resource displaying a remote DOM script."""
-    remote_dom_script = """
-    const p = document.createElement('ui-text');
-    p.textContent = 'This is a remote DOM element from the server.';
-    root.appendChild(p);
-    """
-
-    ui_resource = create_ui_resource({
-        "uri": "ui://remote-dom-demo",
-        "content": {
-            "type": "remoteDom",
-            "script": remote_dom_script.strip(),
-            "framework": "react"
-        },
-        "encoding": "text"
-    })
-
-    return [ui_resource]
-
-
-@mcp.tool()
 def show_action_html() -> list[UIResource]:
     """Creates a UI resource with interactive buttons that demonstrate intent actions."""
     interactive_html = """

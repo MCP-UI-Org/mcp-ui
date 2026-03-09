@@ -82,36 +82,6 @@ puts "Resource 4 (blob will be Base64 of URL): #{JSON.pretty_generate(resource4)
 #   }
 # }
 
-# Example 5: Remote DOM script, text encoding
-remote_dom_script = <<-SCRIPT
-  const button = document.createElement('ui-button');
-  button.setAttribute('label', 'Click me for a tool call!');
-  button.addEventListener('press', () => {
-    window.parent.postMessage({ type: 'tool', payload: { toolName: 'uiInteraction', params: { action: 'button-click', from: 'remote-dom' } } }, '*');
-  });
-  root.appendChild(button);
-SCRIPT
-
-resource5 = McpUiServer.create_ui_resource(
-  uri: 'ui://remote-component/action-button',
-  content: {
-    type: :remote_dom,
-    script: remote_dom_script,
-    framework: :react # or :webcomponents
-  },
-  encoding: :text
-)
-puts "Resource 5: #{JSON.pretty_generate(resource5)}"
-# Output for Resource 5:
-# {
-#   "type": "resource",
-#   "resource": {
-#     "uri": "ui://remote-component/action-button",
-#     "mimeType": "application/vnd.mcp-ui.remote-dom+javascript; framework=react",
-#     "text": "  const button = document.createElement('ui-button');\n  button.setAttribute('label', 'Click me for a tool call!');\n  button.addEventListener('press', () => {\n    window.parent.postMessage({ type: 'tool', payload: { toolName: 'uiInteraction', params: { action: 'button-click', from: 'remote-dom' } } }, '*');\n  });\n  root.appendChild(button);\n"
-#   }
-# }
-
 # These resource objects would then be included in the 'content' array
 # of a toolResult in an MCP interaction.
 ```

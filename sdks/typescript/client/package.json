@@ -12,19 +12,14 @@
       "types": "./dist/src/index.d.ts",
       "import": "./dist/index.mjs",
       "require": "./dist/index.js"
-    },
-    "./ui-resource-renderer.wc.js": "./dist/ui-resource-renderer.wc.js"
+    }
   },
   "files": [
     "dist"
   ],
   "dependencies": {
-    "@modelcontextprotocol/ext-apps": "^0.3.1",
-    "@modelcontextprotocol/sdk": "^1.24.0",
-    "@quilted/threads": "^3.1.3",
-    "@r2wc/react-to-web-component": "^2.0.4",
-    "@remote-dom/core": "^1.8.0",
-    "@remote-dom/react": "^1.2.2",
+    "@modelcontextprotocol/ext-apps": "^1.2.0",
+    "@modelcontextprotocol/sdk": "^1.27.1",
     "zod": "^3.23.8"
   },
   "devDependencies": {
@@ -33,7 +28,6 @@
     "@types/jsdom": "^27.0.0",
     "@types/react": "^18.2.0",
     "@vitejs/plugin-react": "^4.0.0",
-    "esbuild": "^0.25.5",
     "jsdom": "^22.0.0",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
@@ -50,11 +44,9 @@
   },
   "scripts": {
     "prepublishOnly": "pnpm run build",
-    "build": "pnpm run clean && pnpm run bundle:iframe && tsc && vite build && pnpm run build:wc",
-    "build:wc": "vite build --config vite.config.wc.ts",
-    "bundle:iframe": "node scripts/bundle-iframe.js",
+    "build": "pnpm run clean && tsc && vite build",
     "clean": "rimraf dist",
-    "dev": "pnpm run bundle:iframe && vite",
+    "dev": "vite",
     "test": "vitest run",
     "test:watch": "vitest watch",
     "lint": "eslint ."

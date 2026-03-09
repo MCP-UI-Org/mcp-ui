@@ -55,34 +55,6 @@ def external_url_blob_options():
     }
 
 
-@pytest.fixture
-def remote_dom_react_text_options():
-    """Fixture for remote DOM React text-based options."""
-    return {
-        "uri": "ui://test-remote-dom-react",
-        "content": {
-            "type": "remoteDom",
-            "script": "<p>React Component</p>",
-            "framework": "react",
-        },
-        "encoding": "text",
-    }
-
-
-@pytest.fixture
-def remote_dom_wc_blob_options():
-    """Fixture for remote DOM Web Components blob-based options."""
-    return {
-        "uri": "ui://test-remote-dom-wc",
-        "content": {
-            "type": "remoteDom",
-            "script": "<p>Web Component</p>",
-            "framework": "webcomponents",
-        },
-        "encoding": "blob",
-    }
-
-
 class TestCreateUIResource:
     """Test suite for create_ui_resource function."""
 
@@ -150,38 +122,6 @@ class TestCreateUIResource:
         }
         assert resource.model_dump() == expected
 
-    def test_create_text_based_remote_dom_resource_with_react(self, remote_dom_react_text_options):
-        """Test creating a text-based remote DOM resource with React framework."""
-        resource = create_ui_resource(remote_dom_react_text_options)
-        expected = {
-            "meta": None,
-            "annotations": None,
-            "type": "resource",
-            "resource": {
-                "meta": None,
-                "uri": AnyUrl("ui://test-remote-dom-react"),
-                "mimeType": "application/vnd.mcp-ui.remote-dom+javascript; framework=react",
-                "text": "<p>React Component</p>",
-            }
-        }
-        assert resource.model_dump() == expected
-
-    def test_create_blob_based_remote_dom_resource_with_webcomponents(self, remote_dom_wc_blob_options):
-        """Test creating a blob-based remote DOM resource with Web Components framework."""
-        resource = create_ui_resource(remote_dom_wc_blob_options)
-        expected = {
-            "meta": None,
-            "annotations": None,
-            "type": "resource",
-            "resource": {
-                "meta": None,
-                "uri": AnyUrl("ui://test-remote-dom-wc"),
-                "mimeType": "application/vnd.mcp-ui.remote-dom+javascript; framework=webcomponents",
-                "blob": base64.b64encode(b"<p>Web Component</p>").decode("ascii"),
-            }
-        }
-        assert resource.model_dump() == expected
-
 
 class TestCreateUIResourceValidationErrors:
     """Test suite for create_ui_resource validation errors."""
@@ -209,20 +149,6 @@ class TestCreateUIResourceValidationErrors:
         with pytest.raises(InvalidURIError, match="URI must start with 'ui://'"):
             create_ui_resource(options)
 
-    def test_invalid_uri_prefix_with_remote_dom(self):
-        """Test error for invalid URI prefix with remoteDom."""
-        options = {
-            "uri": "invalid://test-remote-dom",
-            "content": {
-                "type": "remoteDom",
-                "script": "<p>Invalid</p>",
-                "framework": "react",
-            },
-            "encoding": "text",
-        }
-        with pytest.raises(InvalidURIError, match="URI must start with 'ui://'"):
-            create_ui_resource(options)
-
     def test_empty_html_string_error(self):
         """Test error when htmlString is empty for rawHtml."""
         options = {
@@ -241,26 +167,6 @@ class TestCreateUIResourceValidationErrors:
             "encoding": "text",
         }
         with pytest.raises(InvalidContentError, match="content.iframeUrl must be provided as a non-empty string"):
-            create_ui_resource(options)
-
-    def test_empty_script_error(self):
-        """Test error when script is empty for remoteDom."""
-        options = {
-            "uri": "ui://test",
-            "content": {"type": "remoteDom", "framework": "react", "script": ""},
-            "encoding": "text",
-        }
-        with pytest.raises(InvalidContentError, match="content.script must be provided as a non-empty string"):
-            create_ui_resource(options)
-
-    def test_invalid_framework_error(self):
-        """Test error when framework is invalid for remoteDom."""
-        options = {
-            "uri": "ui://test",
-            "content": {"type": "remoteDom", "framework": "angular", "script": "<p>Test</p>"},
-            "encoding": "text",
-        }
-        with pytest.raises(ValidationError, match="Input should be 'react' or 'webcomponents'"):
             create_ui_resource(options)
 
     def test_invalid_encoding_error(self):

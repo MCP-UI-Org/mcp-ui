@@ -1,11 +1,6 @@
 import {
   createUIResource,
   sendExperimentalRequest,
-  uiActionResultToolCall,
-  uiActionResultPrompt,
-  uiActionResultLink,
-  uiActionResultIntent,
-  uiActionResultNotification,
 } from '../index';
 import { UI_METADATA_PREFIX } from '../types.js';
 
@@ -161,7 +156,7 @@ describe('@mcp-ui/server', () => {
       };
       // @ts-expect-error We are intentionally passing an invalid URI to test the error.
       expect(() => createUIResource(options)).toThrow(
-        "MCP-UI SDK: URI must start with 'ui://' when content.type is 'rawHtml'.",
+        "MCP-UI SDK: URI must start with 'ui://'.",
       );
     });
 
@@ -176,7 +171,7 @@ describe('@mcp-ui/server', () => {
       };
       // @ts-expect-error We are intentionally passing an invalid URI to test the error.
       expect(() => createUIResource(options)).toThrow(
-        "MCP-UI SDK: URI must start with 'ui://' when content.type is 'externalUrl'.",
+        "MCP-UI SDK: URI must start with 'ui://'.",
       );
     });
 
@@ -202,50 +197,7 @@ describe('@mcp-ui/server', () => {
       );
     });
 
-    it('should use text/html+skybridge mime type when appsSdk adapter is enabled', () => {
-      const options = {
-        uri: 'ui://test-html-adapter' as const,
-        content: { type: 'rawHtml' as const, htmlString: '<p>Test with adapter</p>' },
-        encoding: 'text' as const,
-        adapters: {
-          appsSdk: { enabled: true },
-        },
-      };
-      const resource = createUIResource(options);
-      expect(resource.resource.mimeType).toBe('text/html+skybridge');
-      expect(resource.resource.text).toContain('<script>');
-      expect(resource.resource.text).toContain('MCP_APPSSDK_ADAPTER');
-    });
-
-    it('should use custom mime type from appsSdk adapter config', () => {
-      const options = {
-        uri: 'ui://test-html-adapter-custom' as const,
-        content: { type: 'rawHtml' as const, htmlString: '<p>Test with custom adapter</p>' },
-        encoding: 'text' as const,
-        adapters: {
-          appsSdk: { enabled: true, mimeType: 'text/html+custom-platform' },
-        },
-      };
-      const resource = createUIResource(options);
-      expect(resource.resource.mimeType).toBe('text/html+custom-platform');
-      expect(resource.resource.text).toContain('<script>');
-    });
-
-    it('should use MCP Apps mime type when no adapters are enabled', () => {
-      const options = {
-        uri: 'ui://test-html-no-adapter' as const,
-        content: { type: 'rawHtml' as const, htmlString: '<p>Test without adapter</p>' },
-        encoding: 'text' as const,
-        adapters: {
-          appsSdk: { enabled: false },
-        },
-      };
-      const resource = createUIResource(options);
-      expect(resource.resource.mimeType).toBe('text/html;profile=mcp-app');
-      expect(resource.resource.text).toBe('<p>Test without adapter</p>');
-    });
-
-    it('should use MCP Apps mime type when adapters config is not provided', () => {
+    it('should use MCP Apps mime type', () => {
       const options = {
         uri: 'ui://test-html-no-config' as const,
         content: { type: 'rawHtml' as const, htmlString: '<p>Test no config</p>' },
@@ -254,79 +206,6 @@ describe('@mcp-ui/server', () => {
       const resource = createUIResource(options);
       expect(resource.resource.mimeType).toBe('text/html;profile=mcp-app');
       expect(resource.resource.text).toBe('<p>Test no config</p>');
-    });
-
-    it('should work with blob encoding and appsSdk adapter', () => {
-      const options = {
-        uri: 'ui://test-html-adapter-blob' as const,
-        content: { type: 'rawHtml' as const, htmlString: '<p>Test blob with adapter</p>' },
-        encoding: 'blob' as const,
-        adapters: {
-          appsSdk: { enabled: true },
-        },
-      };
-      const resource = createUIResource(options);
-      expect(resource.resource.mimeType).toBe('text/html+skybridge');
-      expect(resource.resource.blob).toBeDefined();
-      expect(resource.resource.text).toBeUndefined();
-      // Decode blob to verify adapter was injected
-      const decodedHtml = Buffer.from(resource.resource.blob!, 'base64').toString('utf-8');
-      expect(decodedHtml).toContain('<script>');
-      expect(decodedHtml).toContain('MCP_APPSSDK_ADAPTER');
-    });
-  });
-});
-
-describe('UI Action Result Creators', () => {
-  it('should create a tool call action result', () => {
-    const result = uiActionResultToolCall('testTool', { param1: 'value1' });
-    expect(result).toEqual({
-      type: 'tool',
-      payload: {
-        toolName: 'testTool',
-        params: { param1: 'value1' },
-      },
-    });
-  });
-
-  it('should create a prompt action result', () => {
-    const result = uiActionResultPrompt('Enter your name');
-    expect(result).toEqual({
-      type: 'prompt',
-      payload: {
-        prompt: 'Enter your name',
-      },
-    });
-  });
-
-  it('should create a link action result', () => {
-    const result = uiActionResultLink('https://example.com');
-    expect(result).toEqual({
-      type: 'link',
-      payload: {
-        url: 'https://example.com',
-      },
-    });
-  });
-
-  it('should create an intent action result', () => {
-    const result = uiActionResultIntent('doSomething', { data: 'abc' });
-    expect(result).toEqual({
-      type: 'intent',
-      payload: {
-        intent: 'doSomething',
-        params: { data: 'abc' },
-      },
-    });
-  });
-
-  it('should create a notification action result', () => {
-    const result = uiActionResultNotification('Success!');
-    expect(result).toEqual({
-      type: 'notify',
-      payload: {
-        message: 'Success!',
-      },
     });
   });
 });

@@ -61,7 +61,7 @@ export interface UIResource {
   type: 'resource';
   resource: {
     uri: string;
-    mimeType: 'text/html' | 'text/uri-list' | 'application/vnd.mcp-ui.remote-dom';
+    mimeType: 'text/html;profile=mcp-app';
     text?: string;
     blob?: string;
   };
@@ -72,16 +72,12 @@ export interface UIResource {
 
 - **`ui://<component-name>/<instance-id>`**
 
-  - **Purpose**: For all UI resources. The rendering method is determined by `mimeType`.
+  - **Purpose**: For all UI resources.
   - **Content**: `text` or `blob` contains either HTML string or URL string.
-  - **Client Action**: 
-    - If `mimeType: 'text/html'` → Render in a sandboxed iframe using `srcdoc`
-    - If `mimeType: 'text/uri-list'` → Render in a sandboxed iframe using `src`
-    - If `mimeType: 'application/vnd.mcp-ui.remote-dom'` → Execute in sandboxed iframe and render in the tree
-  - **Examples**: 
+  - **Client Action**: Render in a sandboxed iframe
+  - **Examples**:
     - HTML content: A custom button, a small form, a data visualization snippet
     - URL content: Embedding a Grafana dashboard, a third-party widget, a mini-application
-    - RemoteDOM content: A component to be rendered with the host's look-and-feel (component library)
 
 ## Content encoding: `text` vs. `blob`
 
@@ -116,30 +112,16 @@ This design allows for fallback URLs to be specified in the standard format whil
 
 ## Recommended Client-Side Pattern
 
-Client-side hosts should check for the `ui://` URI scheme first to identify MCP-UI resources, rather than checking mimeType:
+Client-side hosts should check for the `ui://` URI scheme to identify MCP-UI resources:
 
 ```tsx
-// ✅ Recommended: Check URI scheme first
 if (
   mcpResource.type === 'resource' &&
   mcpResource.resource.uri?.startsWith('ui://')
 ) {
-  return <UIResourceRenderer resource={mcpResource.resource} onUIAction={handleAction} />;
-}
-
-// ❌ Not recommended: Check mimeType first
-if (
-  mcpResource.type === 'resource' &&
-  (mcpResource.resource.mimeType === 'text/html' || mcpResource.resource.mimeType === 'text/uri-list')
-) {
-  return <UIResourceRenderer resource={mcpResource.resource} onUIAction={handleAction} />;
+  return <AppRenderer client={client} toolName={toolName} ... />;
 }
 ```
-
-**Benefits of URI-first checking:**
-- Future-proof: Works with new content types like `application/javascript`
-- Semantic clarity: `ui://` clearly indicates this is a UI resource
-- Simpler logic: Let the `UIResourceRenderer` component handle mimeType-based rendering internally
 
 ## Communication (Client <-> Iframe)
 

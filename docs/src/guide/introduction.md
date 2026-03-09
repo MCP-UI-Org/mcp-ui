@@ -55,13 +55,12 @@ When a host calls `show_widget`, it sees the `_meta.ui.resourceUri` and fetches 
 The `@mcp-ui/*` packages provide everything needed to build and render MCP Apps:
 
 ### Server SDK (`@mcp-ui/server`)
-- **`createUIResource`**: Creates UI resource objects with HTML content, external URLs, or Remote DOM
+- **`createUIResource`**: Creates UI resource objects with HTML content or external URLs
 - Works with `registerAppTool` and `registerAppResource` from `@modelcontextprotocol/ext-apps/server`
 
 ### Client SDK (`@mcp-ui/client`)
 - **`AppRenderer`**: High-level component for rendering tool UIs (fetches resources, handles lifecycle)
 - **`AppFrame`**: Lower-level component for when you have pre-fetched HTML
-- **`UIResourceRenderer`**: For legacy MCP-UI hosts that embed resources in tool responses
 
 ### Additional Language SDKs
 - **`mcp_ui_server`** (Ruby): Helper methods for creating UI resources
@@ -166,7 +165,6 @@ function ToolUI({ client, toolName, toolInput, toolResult }) {
 - **Secure**: Sandboxed iframe execution prevents malicious code from affecting the host
 - **Interactive**: Two-way communication between UI and host via JSON-RPC
 - **Flexible**: Supports HTML content with the MCP Apps standard MIME type
-- **Backward Compatible**: Adapters available for legacy MCP-UI hosts
 
 ## Wire Format: UIResource
 
@@ -189,39 +187,8 @@ The MIME type `text/html;profile=mcp-app` is the MCP Apps standard for UI resour
 ### Key Field Details:
 
 - **`uri`**: Unique identifier using `ui://` scheme (e.g., `ui://my-tool/widget-01`)
-- **`mimeType`**: Content type
-  - `text/html` → HTML content rendered via `<iframe srcdoc>`
-  - `text/uri-list` → URL content rendered via `<iframe src>`
-  - `text/html;profile=mcp-app` → MCP Apps-compliant HTML
+- **`mimeType`**: `text/html;profile=mcp-app` — MCP Apps-compliant HTML
 - **`text` or `blob`**: The actual content, either as plain text or Base64 encoded
-
-## Legacy MCP-UI Pattern
-
-For hosts that don't support MCP Apps yet, you can embed UI resources directly in tool responses:
-
-```typescript
-// Legacy pattern: embed resource in tool response
-const resource = createUIResource({
-  uri: 'ui://my-tool/widget',
-  content: { type: 'rawHtml', htmlString: '<h1>Widget</h1>' },
-  encoding: 'text'
-});
-
-return { content: [resource] };  // Resource embedded in response
-```
-
-The client renders these with `UIResourceRenderer`:
-
-```tsx
-import { UIResourceRenderer } from '@mcp-ui/client';
-
-<UIResourceRenderer
-  resource={mcpResource.resource}
-  onUIAction={(action) => console.log('Action:', action)}
-/>
-```
-
-For a full guide on supporting both patterns, see the [Legacy MCP-UI Adapter](./mcp-apps) documentation.
 
 ## Next Steps
 
