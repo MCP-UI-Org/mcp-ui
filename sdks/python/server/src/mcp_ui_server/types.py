@@ -7,11 +7,10 @@ from pydantic import BaseModel
 # Primary identifier for the resource. Starts with ui://
 URI = str  # In TypeScript: `ui://${string}`, but Python doesn't have template literal types
 
-# MIME types for different content types
-MimeType = Literal[
-    "text/html",
-    "text/uri-list",
-]
+# MIME type for MCP Apps resources (used for both HTML and URL content)
+RESOURCE_MIME_TYPE = "text/html;profile=mcp-app"
+
+MimeType = Literal["text/html;profile=mcp-app"]
 
 UIActionType = Literal["tool", "prompt", "link", "intent", "notify"]
 

@@ -68,7 +68,7 @@ class TestCreateUIResource:
             "resource": {
                 "meta": None,
                 "uri": AnyUrl("ui://test-html"),
-                "mimeType": "text/html",
+                "mimeType": "text/html;profile=mcp-app",
                 "text": "<p>Test</p>",
             }
         }
@@ -84,7 +84,7 @@ class TestCreateUIResource:
             "resource": {
                 "meta": None,
                 "uri": AnyUrl("ui://test-html-blob"),
-                "mimeType": "text/html",
+                "mimeType": "text/html;profile=mcp-app",
                 "blob": base64.b64encode(b"<h1>Blob</h1>").decode("ascii"),
             }
         }
@@ -100,7 +100,7 @@ class TestCreateUIResource:
             "resource": {
                 "meta": None,
                 "uri": AnyUrl("ui://test-url"),
-                "mimeType": "text/uri-list",
+                "mimeType": "text/html;profile=mcp-app",
                 "text": "https://example.com",
             }
         }
@@ -116,7 +116,7 @@ class TestCreateUIResource:
             "resource": {
                 "meta": None,
                 "uri": AnyUrl("ui://test-url-blob"),
-                "mimeType": "text/uri-list",
+                "mimeType": "text/html;profile=mcp-app",
                 "blob": base64.b64encode(b"https://example.com/blob").decode("ascii"),
             }
         }

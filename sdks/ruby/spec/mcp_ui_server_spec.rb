@@ -14,11 +14,11 @@ RSpec.describe McpUiServer do
     context 'with raw_html content' do
       let(:content) { { type: :raw_html, htmlString: '<h1>Hello</h1>' } }
 
-      it 'creates a resource with text/html mimetype and text encoding' do
+      it 'creates a resource with text/html;profile=mcp-app mimetype and text encoding' do
         resource = described_class.create_ui_resource(uri: uri, content: content)
         expect(resource[:type]).to eq('resource')
         expect(resource[:resource][:uri]).to eq(uri)
-        expect(resource[:resource][:mimeType]).to eq('text/html')
+        expect(resource[:resource][:mimeType]).to eq('text/html;profile=mcp-app')
         expect(resource[:resource][:text]).to eq('<h1>Hello</h1>')
       end
 
@@ -31,9 +31,9 @@ RSpec.describe McpUiServer do
     context 'with external_url content' do
       let(:content) { { type: :external_url, iframeUrl: 'https://example.com' } }
 
-      it 'creates a resource with text/uri-list mimetype' do
+      it 'creates a resource with text/html;profile=mcp-app mimetype' do
         resource = described_class.create_ui_resource(uri: uri, content: content)
-        expect(resource[:resource][:mimeType]).to eq('text/uri-list')
+        expect(resource[:resource][:mimeType]).to eq('text/html;profile=mcp-app')
         expect(resource[:resource][:text]).to eq('https://example.com')
       end
 
@@ -90,8 +90,9 @@ RSpec.describe McpUiServer do
 
     context 'with constants' do
       it 'defines expected MIME type constants' do
-        expect(McpUiServer::MIME_TYPE_HTML).to eq('text/html')
-        expect(McpUiServer::MIME_TYPE_URI_LIST).to eq('text/uri-list')
+        expect(McpUiServer::RESOURCE_MIME_TYPE).to eq('text/html;profile=mcp-app')
+        expect(McpUiServer::MIME_TYPE_HTML).to eq('text/html;profile=mcp-app')
+        expect(McpUiServer::MIME_TYPE_URI_LIST).to eq('text/html;profile=mcp-app')
       end
 
       it 'defines expected content type constants' do

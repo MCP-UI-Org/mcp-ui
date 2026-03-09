@@ -8,9 +8,11 @@ require 'base64'
 module McpUiServer
   class Error < StandardError; end
 
-  # MIME type constants
-  MIME_TYPE_HTML = 'text/html'
-  MIME_TYPE_URI_LIST = 'text/uri-list'
+  # MIME type for MCP Apps resources (used for both HTML and URL content)
+  RESOURCE_MIME_TYPE = 'text/html;profile=mcp-app'
+  # Legacy aliases — same value for MCP Apps compatibility
+  MIME_TYPE_HTML = RESOURCE_MIME_TYPE
+  MIME_TYPE_URI_LIST = RESOURCE_MIME_TYPE
 
   # Content type constants
   CONTENT_TYPE_RAW_HTML = :raw_html
@@ -88,14 +90,14 @@ module McpUiServer
   private_class_method :process_content
 
   def self.process_raw_html_content(content, resource)
-    resource[:mimeType] = MIME_TYPE_HTML
+    resource[:mimeType] = RESOURCE_MIME_TYPE
     required_key = REQUIRED_CONTENT_KEYS[CONTENT_TYPE_RAW_HTML]
     content.fetch(required_key) { raise Error, "Missing required key :#{required_key} for raw_html content" }
   end
   private_class_method :process_raw_html_content
 
   def self.process_external_url_content(content, resource)
-    resource[:mimeType] = MIME_TYPE_URI_LIST
+    resource[:mimeType] = RESOURCE_MIME_TYPE
     required_key = REQUIRED_CONTENT_KEYS[CONTENT_TYPE_EXTERNAL_URL]
     content.fetch(required_key) { raise Error, "Missing required key :#{required_key} for external_url content" }
   end

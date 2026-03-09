@@ -8,10 +8,10 @@ from pydantic import AnyUrl
 
 from .exceptions import InvalidContentError, InvalidURIError
 from .types import (
+    RESOURCE_MIME_TYPE,
     UI_METADATA_PREFIX,
     CreateUIResourceOptions,
     ExternalUrlPayload,
-    MimeType,
     RawHtmlPayload,
     UIActionResultIntent,
     UIActionResultLink,
@@ -118,7 +118,7 @@ def create_ui_resource(options_dict: dict[str, Any]) -> UIResource:
                 "htmlString must be provided as a non-empty string when content.type is 'rawHtml'"
             )
         actual_content_string = htmlString
-        mime_type: MimeType = "text/html"
+        mime_type = RESOURCE_MIME_TYPE
 
     elif content_type == "externalUrl":
         if not isinstance(content, ExternalUrlPayload):
@@ -129,7 +129,7 @@ def create_ui_resource(options_dict: dict[str, Any]) -> UIResource:
                 "content.iframeUrl must be provided as a non-empty string when content.type is 'externalUrl'"
             )
         actual_content_string = iframe_url
-        mime_type = "text/uri-list"
+        mime_type = RESOURCE_MIME_TYPE
 
     else:
         # This should be prevented by TypeScript/mypy, but handle gracefully
