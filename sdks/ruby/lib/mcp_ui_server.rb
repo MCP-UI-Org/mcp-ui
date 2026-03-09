@@ -8,9 +8,9 @@ require 'base64'
 module McpUiServer
   class Error < StandardError; end
 
-  # MIME type for MCP Apps resources (used for both HTML and URL content)
+  # MIME type for MCP Apps resources
   RESOURCE_MIME_TYPE = 'text/html;profile=mcp-app'
-  # Legacy aliases — same value for MCP Apps compatibility
+  # Convenience aliases
   MIME_TYPE_HTML = RESOURCE_MIME_TYPE
   MIME_TYPE_URI_LIST = RESOURCE_MIME_TYPE
 

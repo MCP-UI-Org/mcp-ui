@@ -6,13 +6,13 @@ import { UI_METADATA_PREFIX } from '../types.js';
 
 describe('@mcp-ui/server', () => {
   describe('createUIResource', () => {
-    it('should create a text-based direct HTML resource', () => {
+    it('should create a text-based direct HTML resource', async () => {
       const options = {
         uri: 'ui://test-html' as const,
         content: { type: 'rawHtml' as const, htmlString: '<p>Test</p>' },
         encoding: 'text' as const,
       };
-      const resource = createUIResource(options);
+      const resource = await createUIResource(options);
       expect(resource.type).toBe('resource');
       expect(resource.resource.uri).toBe('ui://test-html');
       expect(resource.resource.mimeType).toBe('text/html;profile=mcp-app');
@@ -20,147 +20,157 @@ describe('@mcp-ui/server', () => {
       expect(resource.resource.blob).toBeUndefined();
     });
 
-    it('should create a blob-based direct HTML resource', () => {
+    it('should create a blob-based direct HTML resource', async () => {
       const options = {
         uri: 'ui://test-html-blob' as const,
         content: { type: 'rawHtml' as const, htmlString: '<h1>Blob</h1>' },
         encoding: 'blob' as const,
       };
-      const resource = createUIResource(options);
+      const resource = await createUIResource(options);
       expect(resource.resource.blob).toBe(Buffer.from('<h1>Blob</h1>').toString('base64'));
       expect(resource.resource.text).toBeUndefined();
     });
 
-    it('should create a text-based external URL resource', () => {
-      const options = {
-        uri: 'ui://test-url' as const,
-        content: {
-          type: 'externalUrl' as const,
-          iframeUrl: 'https://example.com',
-        },
-        encoding: 'text' as const,
-      };
-      const resource = createUIResource(options);
-      expect(resource.resource.uri).toBe('ui://test-url');
-      expect(resource.resource.mimeType).toBe('text/html;profile=mcp-app');
-      expect(resource.resource.text).toBe('https://example.com');
-      expect(resource.resource.blob).toBeUndefined();
-    });
+    describe('externalUrl (fetches and injects <base>)', () => {
+      const MOCK_HTML = '<html><head><title>Test</title></head><body>Hello</body></html>';
 
-    it('should create a text-based external URL resource with metadata', () => {
-      const options = {
-        uri: 'ui://test-url' as const,
-        content: { type: 'externalUrl' as const, iframeUrl: 'https://example.com' },
-        encoding: 'text' as const,
-        uiMetadata: { 'preferred-frame-size': ['100px', '100px'] as [string, string] },
-        resourceProps: { _meta: { 'arbitrary-prop': 'arbitrary' } },
-      };
-      const resource = createUIResource(options);
-      expect(resource.resource.uri).toBe('ui://test-url');
-      expect(resource.resource.mimeType).toBe('text/html;profile=mcp-app');
-      expect(resource.resource.text).toBe('https://example.com');
-      expect(resource.resource.blob).toBeUndefined();
-      expect(resource.resource._meta).toEqual({
-        [`${UI_METADATA_PREFIX}preferred-frame-size`]: ['100px', '100px'],
-        'arbitrary-prop': 'arbitrary',
+      beforeEach(() => {
+        vi.stubGlobal(
+          'fetch',
+          vi.fn().mockResolvedValue({
+            ok: true,
+            text: () => Promise.resolve(MOCK_HTML),
+          }),
+        );
+      });
+
+      afterEach(() => {
+        vi.unstubAllGlobals();
+      });
+
+      it('should fetch external URL and inject <base> tag', async () => {
+        const resource = await createUIResource({
+          uri: 'ui://test-url' as const,
+          content: { type: 'externalUrl' as const, iframeUrl: 'https://example.com/page' },
+          encoding: 'text' as const,
+        });
+
+        expect(fetch).toHaveBeenCalledWith('https://example.com/page');
+        expect(resource.resource.uri).toBe('ui://test-url');
+        expect(resource.resource.mimeType).toBe('text/html;profile=mcp-app');
+        expect(resource.resource.text).toBe(
+          '<html><head><base href="https://example.com/page"><title>Test</title></head><body>Hello</body></html>',
+        );
+        expect(resource.resource.blob).toBeUndefined();
+      });
+
+      it('should fetch and encode as blob', async () => {
+        const resource = await createUIResource({
+          uri: 'ui://test-url-blob' as const,
+          content: { type: 'externalUrl' as const, iframeUrl: 'https://example.com/blob' },
+          encoding: 'blob' as const,
+        });
+
+        expect(fetch).toHaveBeenCalledWith('https://example.com/blob');
+        const expectedHtml =
+          '<html><head><base href="https://example.com/blob"><title>Test</title></head><body>Hello</body></html>';
+        expect(resource.resource.blob).toBe(Buffer.from(expectedHtml).toString('base64'));
+        expect(resource.resource.text).toBeUndefined();
+      });
+
+      it('should include metadata on fetched external URL resource', async () => {
+        const resource = await createUIResource({
+          uri: 'ui://test-url' as const,
+          content: { type: 'externalUrl' as const, iframeUrl: 'https://example.com' },
+          encoding: 'text' as const,
+          uiMetadata: { 'preferred-frame-size': ['100px', '100px'] as [string, string] },
+          resourceProps: { _meta: { 'arbitrary-prop': 'arbitrary' } },
+        });
+
+        expect(resource.resource._meta).toEqual({
+          [`${UI_METADATA_PREFIX}preferred-frame-size`]: ['100px', '100px'],
+          'arbitrary-prop': 'arbitrary',
+        });
+      });
+
+      it('should include metadata respecting order of overriding metadata', async () => {
+        const resource = await createUIResource({
+          uri: 'ui://test-url' as const,
+          content: { type: 'externalUrl' as const, iframeUrl: 'https://example.com' },
+          encoding: 'text' as const,
+          metadata: { 'arbitrary-prop': 'arbitrary', foo: 'bar' },
+          resourceProps: { _meta: { 'arbitrary-prop': 'arbitrary2' } },
+        });
+
+        expect(resource.resource._meta).toEqual({ foo: 'bar', 'arbitrary-prop': 'arbitrary2' });
+      });
+
+      it('should include embedded resource props', async () => {
+        const resource = await createUIResource({
+          uri: 'ui://test-url' as const,
+          content: { type: 'externalUrl' as const, iframeUrl: 'https://example.com' },
+          encoding: 'text' as const,
+          uiMetadata: { 'preferred-frame-size': ['100px', '100px'] as [string, string] },
+          resourceProps: { _meta: { 'arbitrary-metadata': 'resource-level-metadata' } },
+          embeddedResourceProps: {
+            annotations: { audience: ['user'] },
+            _meta: { 'arbitrary-metadata': 'embedded-resource-metadata' },
+          },
+        });
+
+        expect(resource.annotations).toEqual({ audience: ['user'] });
+        expect(resource._meta).toEqual({ 'arbitrary-metadata': 'embedded-resource-metadata' });
+        expect(resource.resource._meta).toEqual({
+          'arbitrary-metadata': 'resource-level-metadata',
+          [`${UI_METADATA_PREFIX}preferred-frame-size`]: ['100px', '100px'],
+        });
+      });
+
+      it('should throw when fetch fails', async () => {
+        vi.stubGlobal(
+          'fetch',
+          vi.fn().mockResolvedValue({
+            ok: false,
+            status: 404,
+            statusText: 'Not Found',
+          }),
+        );
+
+        await expect(
+          createUIResource({
+            uri: 'ui://test-url' as const,
+            content: { type: 'externalUrl' as const, iframeUrl: 'https://example.com/missing' },
+            encoding: 'text' as const,
+          }),
+        ).rejects.toThrow('Failed to fetch external URL');
       });
     });
 
-    it('should create a text-based external URL resource with metadata, respecting order of overriding metadata', () => {
-      const options = {
-        uri: 'ui://test-url' as const,
-        content: { type: 'externalUrl' as const, iframeUrl: 'https://example.com' },
-        encoding: 'text' as const,
-        metadata: { 'arbitrary-prop': 'arbitrary', foo: 'bar' },
-        resourceProps: { _meta: { 'arbitrary-prop': 'arbitrary2' } },
-      };
-      const resource = createUIResource(options);
-      expect(resource.resource.uri).toBe('ui://test-url');
-      expect(resource.resource.mimeType).toBe('text/html;profile=mcp-app');
-      expect(resource.resource.text).toBe('https://example.com');
-      expect(resource.resource.blob).toBeUndefined();
-      expect(resource.resource._meta).toEqual({ foo: 'bar', 'arbitrary-prop': 'arbitrary2' });
-    });
-
-    it('should create a text-based external URL resource with embedded resource props', () => {
-      const options = {
-        uri: 'ui://test-url' as const,
-        content: { type: 'externalUrl' as const, iframeUrl: 'https://example.com' },
-        encoding: 'text' as const,
-        uiMetadata: { 'preferred-frame-size': ['100px', '100px'] as [string, string] },
-        resourceProps: { _meta: { 'arbitrary-metadata': 'resource-level-metadata' } },
-        embeddedResourceProps: {
-          annotations: {
-            audience: ['user'],
-          },
-          _meta: { 'arbitrary-metadata': 'embedded-resource-metadata' },
-        },
-      };
-      const resource = createUIResource(options);
-      expect(resource).toEqual({
-        type: 'resource',
-        resource: {
-          uri: 'ui://test-url',
-          mimeType: 'text/html;profile=mcp-app',
-          text: 'https://example.com',
-          blob: undefined,
-          _meta: {
-            'arbitrary-metadata': 'resource-level-metadata',
-            [`${UI_METADATA_PREFIX}preferred-frame-size`]: ['100px', '100px'],
-          },
-        },
-        annotations: {
-          audience: ['user'],
-        },
-        _meta: {
-          'arbitrary-metadata': 'embedded-resource-metadata',
-        },
-      });
-    });
-
-    it('should create a blob-based external URL resource', () => {
-      const options = {
-        uri: 'ui://test-url-blob' as const,
-        content: {
-          type: 'externalUrl' as const,
-          iframeUrl: 'https://example.com/blob',
-        },
-        encoding: 'blob' as const,
-      };
-      const resource = createUIResource(options);
-      expect(resource.resource.mimeType).toBe('text/html;profile=mcp-app');
-      expect(resource.resource.blob).toBe(
-        Buffer.from('https://example.com/blob').toString('base64'),
-      );
-      expect(resource.resource.text).toBeUndefined();
-      expect(resource.resource._meta).toBeUndefined();
-    });
-
-    it('should create a blob-based direct HTML resource with correct mimetype', () => {
+    it('should create a blob-based direct HTML resource with correct mimetype', async () => {
       const options = {
         uri: 'ui://test-html-blob' as const,
         content: { type: 'rawHtml' as const, htmlString: '<h1>Blob</h1>' },
         encoding: 'blob' as const,
       };
-      const resource = createUIResource(options);
+      const resource = await createUIResource(options);
       expect(resource.resource.mimeType).toBe('text/html;profile=mcp-app');
       expect(resource.resource.blob).toBe(Buffer.from('<h1>Blob</h1>').toString('base64'));
       expect(resource.resource.text).toBeUndefined();
     });
 
-    it('should throw error for invalid URI prefix with rawHtml', () => {
+    it('should throw error for invalid URI prefix with rawHtml', async () => {
       const options = {
         uri: 'invalid://test-html' as const,
         content: { type: 'rawHtml' as const, htmlString: '<p>Test</p>' },
         encoding: 'text' as const,
       };
       // @ts-expect-error We are intentionally passing an invalid URI to test the error.
-      expect(() => createUIResource(options)).toThrow(
+      await expect(createUIResource(options)).rejects.toThrow(
         "MCP-UI SDK: URI must start with 'ui://'.",
       );
     });
 
-    it('should throw error for invalid URI prefix with externalUrl', () => {
+    it('should throw error for invalid URI prefix with externalUrl', async () => {
       const options = {
         uri: 'invalid://test-url' as const,
         content: {
@@ -170,40 +180,40 @@ describe('@mcp-ui/server', () => {
         encoding: 'text' as const,
       };
       // @ts-expect-error We are intentionally passing an invalid URI to test the error.
-      expect(() => createUIResource(options)).toThrow(
+      await expect(createUIResource(options)).rejects.toThrow(
         "MCP-UI SDK: URI must start with 'ui://'.",
       );
     });
 
-    it('should throw an error if htmlString is not a string for rawHtml', () => {
+    it('should throw an error if htmlString is not a string for rawHtml', async () => {
       const options = {
         uri: 'ui://test' as const,
         content: { type: 'rawHtml' as const, htmlString: null },
       };
       // @ts-expect-error intentionally passing invalid type
-      expect(() => createUIResource(options)).toThrow(
+      await expect(createUIResource(options)).rejects.toThrow(
         "MCP-UI SDK: content.htmlString must be provided as a string when content.type is 'rawHtml'.",
       );
     });
 
-    it('should throw an error if iframeUrl is not a string for externalUrl', () => {
+    it('should throw an error if iframeUrl is not a string for externalUrl', async () => {
       const options = {
         uri: 'ui://test' as const,
         content: { type: 'externalUrl' as const, iframeUrl: 123 },
       };
       // @ts-expect-error intentionally passing invalid type
-      expect(() => createUIResource(options)).toThrow(
+      await expect(createUIResource(options)).rejects.toThrow(
         "MCP-UI SDK: content.iframeUrl must be provided as a string when content.type is 'externalUrl'.",
       );
     });
 
-    it('should use MCP Apps mime type', () => {
+    it('should use MCP Apps mime type', async () => {
       const options = {
         uri: 'ui://test-html-no-config' as const,
         content: { type: 'rawHtml' as const, htmlString: '<p>Test no config</p>' },
         encoding: 'text' as const,
       };
-      const resource = createUIResource(options);
+      const resource = await createUIResource(options);
       expect(resource.resource.mimeType).toBe('text/html;profile=mcp-app');
       expect(resource.resource.text).toBe('<p>Test no config</p>');
     });

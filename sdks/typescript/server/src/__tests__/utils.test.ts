@@ -1,6 +1,8 @@
 import { describe, it, expect, vi } from 'vitest';
 import {
+  fetchExternalUrl,
   getAdditionalResourceProps,
+  injectBaseTag,
   utf8ToBase64,
 } from '../utils.js';
 import { UI_METADATA_PREFIX, RESOURCE_MIME_TYPE } from '../types.js';
@@ -146,6 +148,74 @@ describe('utf8ToBase64', () => {
     global.Buffer = bufferBackup;
     global.TextEncoder = textEncoderBackup;
     global.btoa = btoaBackup;
+  });
+});
+
+describe('injectBaseTag', () => {
+  it('should inject after <head>', () => {
+    const html = '<html><head><title>Test</title></head><body></body></html>';
+    expect(injectBaseTag(html, 'https://example.com/page')).toBe(
+      '<html><head><base href="https://example.com/page"><title>Test</title></head><body></body></html>',
+    );
+  });
+
+  it('should inject after <head> with attributes', () => {
+    const html = '<html><head lang="en"><title>Test</title></head></html>';
+    expect(injectBaseTag(html, 'https://example.com')).toBe(
+      '<html><head lang="en"><base href="https://example.com"><title>Test</title></head></html>',
+    );
+  });
+
+  it('should prepend if no <head> tag', () => {
+    const html = '<p>Hello</p>';
+    expect(injectBaseTag(html, 'https://example.com')).toBe(
+      '<base href="https://example.com"><p>Hello</p>',
+    );
+  });
+
+  it('should not add if <base> already exists', () => {
+    const html = '<html><head><base href="https://other.com"><title>T</title></head></html>';
+    expect(injectBaseTag(html, 'https://example.com')).toBe(html);
+  });
+
+  it('should escape ampersands and quotes in URL', () => {
+    const html = '<head></head>';
+    expect(injectBaseTag(html, 'https://example.com/a?b=1&c="2"')).toBe(
+      '<head><base href="https://example.com/a?b=1&amp;c=&quot;2&quot;"></head>',
+    );
+  });
+});
+
+describe('fetchExternalUrl', () => {
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  it('should fetch and inject <base> tag', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue({
+        ok: true,
+        text: () => Promise.resolve('<html><head></head><body>Hi</body></html>'),
+      }),
+    );
+
+    const result = await fetchExternalUrl('https://example.com/page');
+    expect(fetch).toHaveBeenCalledWith('https://example.com/page');
+    expect(result).toBe(
+      '<html><head><base href="https://example.com/page"></head><body>Hi</body></html>',
+    );
+  });
+
+  it('should throw on non-OK response', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue({ ok: false, status: 500, statusText: 'Internal Server Error' }),
+    );
+
+    await expect(fetchExternalUrl('https://example.com/error')).rejects.toThrow(
+      'Failed to fetch external URL "https://example.com/error": 500 Internal Server Error',
+    );
   });
 });
 

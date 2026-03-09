@@ -13,11 +13,11 @@ from .core import (
     ui_action_result_tool_call,
 )
 from .types import (
-    URI,
     CreateUIResourceOptions,
     MimeType,
     RESOURCE_MIME_TYPE,
     ResourceContentPayload,
+    URI,
     UIActionResult,
     UIActionResultIntent,
     UIActionResultLink,

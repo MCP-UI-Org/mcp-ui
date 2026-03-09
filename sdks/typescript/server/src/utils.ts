@@ -1,6 +1,51 @@
 import type { CreateUIResourceOptions, UIResourceProps } from './types.js';
 import { UI_METADATA_PREFIX } from './types.js';
 
+/**
+ * Fetches the HTML content from an external URL and injects a `<base>` tag
+ * so that relative paths (CSS, JS, images, etc.) resolve against the original URL.
+ *
+ * @param url The external URL to fetch.
+ * @returns The fetched HTML with a `<base>` tag injected.
+ */
+export async function fetchExternalUrl(url: string): Promise<string> {
+  const response = await fetch(url);
+  if (!response.ok) {
+    throw new Error(
+      `MCP-UI SDK: Failed to fetch external URL "${url}": ${response.status} ${response.statusText}`,
+    );
+  }
+  const html = await response.text();
+  return injectBaseTag(html, url);
+}
+
+/**
+ * Injects a `<base href="...">` tag into HTML so relative paths resolve against
+ * the given URL. If the HTML already contains a `<base` tag, it is left as-is.
+ */
+export function injectBaseTag(html: string, url: string): string {
+  // Don't add <base> if one already exists
+  if (/<base\s/i.test(html)) {
+    return html;
+  }
+
+  const baseTag = `<base href="${escapeHtmlAttr(url)}">`;
+
+  // Inject after <head> or <head ...> if present
+  const headMatch = html.match(/<head(\s[^>]*)?>/i);
+  if (headMatch) {
+    const insertPos = headMatch.index! + headMatch[0].length;
+    return html.slice(0, insertPos) + baseTag + html.slice(insertPos);
+  }
+
+  // No <head> tag — prepend
+  return baseTag + html;
+}
+
+function escapeHtmlAttr(str: string): string {
+  return str.replace(/&/g, '&amp;').replace(/"/g, '&quot;');
+}
+
 export function getAdditionalResourceProps(
   resourceOptions: Partial<CreateUIResourceOptions>,
 ): UIResourceProps {

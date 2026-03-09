@@ -6,6 +6,7 @@ import {
   RESOURCE_MIME_TYPE,
 } from './types.js';
 import {
+  fetchExternalUrl,
   getAdditionalResourceProps,
   utf8ToBase64,
 } from './utils.js';
@@ -21,10 +22,13 @@ export type UIResource = {
  * Creates a UIResource.
  * This is the object that should be included in the 'content' array of a toolResult.
  *
+ * For `externalUrl` content, fetches the URL's HTML and injects a `<base>` tag
+ * so that relative paths resolve against the original URL.
+ *
  * @param options Configuration for the interactive resource.
- * @returns a UIResource
+ * @returns a UIResource (async for externalUrl content which requires fetching)
  */
-export function createUIResource(options: CreateUIResourceOptions): UIResource {
+export async function createUIResource(options: CreateUIResourceOptions): Promise<UIResource> {
   let actualContentString: string;
   const mimeType: MimeType = RESOURCE_MIME_TYPE;
 
@@ -46,7 +50,7 @@ export function createUIResource(options: CreateUIResourceOptions): UIResource {
         "MCP-UI SDK: content.iframeUrl must be provided as a string when content.type is 'externalUrl'.",
       );
     }
-    actualContentString = iframeUrl;
+    actualContentString = await fetchExternalUrl(iframeUrl);
   } else {
     // This case should ideally be prevented by TypeScript's discriminated union checks
     const exhaustiveCheckContent: never = options.content;
