@@ -34,14 +34,33 @@ describe('@mcp-ui/server', () => {
     describe('externalUrl (fetches and injects <base>)', () => {
       const MOCK_HTML = '<html><head><title>Test</title></head><body>Hello</body></html>';
 
-      beforeEach(() => {
+      function mockFetchWithHtml(html: string) {
+        const encoder = new TextEncoder();
+        const encoded = encoder.encode(html);
+        let readCalled = false;
         vi.stubGlobal(
           'fetch',
           vi.fn().mockResolvedValue({
             ok: true,
-            text: () => Promise.resolve(MOCK_HTML),
+            headers: new Headers(),
+            body: {
+              getReader: () => ({
+                read: () => {
+                  if (!readCalled) {
+                    readCalled = true;
+                    return Promise.resolve({ done: false, value: encoded });
+                  }
+                  return Promise.resolve({ done: true, value: undefined });
+                },
+                cancel: vi.fn(),
+              }),
+            },
           }),
         );
+      }
+
+      beforeEach(() => {
+        mockFetchWithHtml(MOCK_HTML);
       });
 
       afterEach(() => {
@@ -55,7 +74,9 @@ describe('@mcp-ui/server', () => {
           encoding: 'text' as const,
         });
 
-        expect(fetch).toHaveBeenCalledWith('https://example.com/page');
+        expect(fetch).toHaveBeenCalledWith('https://example.com/page', expect.objectContaining({
+          signal: expect.any(AbortSignal),
+        }));
         expect(resource.resource.uri).toBe('ui://test-url');
         expect(resource.resource.mimeType).toBe('text/html;profile=mcp-app');
         expect(resource.resource.text).toBe(
@@ -75,7 +96,9 @@ describe('@mcp-ui/server', () => {
           encoding: 'blob' as const,
         });
 
-        expect(fetch).toHaveBeenCalledWith('https://example.com/blob');
+        expect(fetch).toHaveBeenCalledWith('https://example.com/blob', expect.objectContaining({
+          signal: expect.any(AbortSignal),
+        }));
         const expectedHtml =
           '<html><head><base href="https://example.com/blob"><title>Test</title></head><body>Hello</body></html>';
         expect(resource.resource.blob).toBe(Buffer.from(expectedHtml).toString('base64'));
@@ -173,6 +196,7 @@ describe('@mcp-ui/server', () => {
             ok: false,
             status: 404,
             statusText: 'Not Found',
+            headers: new Headers(),
           }),
         );
 

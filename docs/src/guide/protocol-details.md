@@ -86,11 +86,14 @@ export interface UIResource {
 
 ## External URL Handling
 
-When using `createUIResource` with `content.type: 'externalUrl'`, the server SDK fetches the URL's HTML content and injects a `<base>` tag so relative paths (CSS, JS, images) resolve against the original URL. The resulting resource contains HTML content, not a bare URL string.
+When using `createUIResource` with `content.type: 'externalUrl'`, the behavior depends on the SDK:
 
-The SDK also automatically populates `_meta.csp.baseUriDomains` with the external URL's origin, so the host's sandbox iframe can set appropriate CSP headers to allow loading the fetched page's resources.
+- **TypeScript SDK**: Fetches the URL's HTML content server-side, injects a `<base>` tag so relative paths (CSS, JS, images) resolve against the original URL, and returns the resulting HTML as the resource content. It also validates the URL (http/https only, blocks private/localhost addresses) and enforces a timeout and response size limit. The SDK automatically populates `_meta.csp.baseUriDomains` with the external URL's origin, so the host's sandbox iframe can set appropriate CSP headers.
+- **Python and Ruby SDKs**: Store the URL string directly as the resource content without fetching it. The host client is responsible for fetching and rendering the external page.
 
 > **Note:** Not all hosts support `baseUriDomains`. Those that don't will ignore this field, which may cause the `<base>` tag to be blocked by the sandbox CSP.
+>
+> **Security:** The TypeScript SDK's server-side fetch introduces SSRF risk if the URL is derived from untrusted user input. The SDK blocks private IP ranges and localhost by default, but server developers should apply additional validation (e.g., URL allowlists) when the URL originates from user input. DNS rebinding attacks are not mitigated at the SDK level.
 
 ## Recommended Client-Side Pattern
 

@@ -5,6 +5,7 @@ import {
   getAdditionalResourceProps,
   injectBaseTag,
   utf8ToBase64,
+  validateExternalUrl,
 } from '../utils.js';
 import { UI_METADATA_PREFIX, RESOURCE_MIME_TYPE } from '../types.js';
 import { RESOURCE_MIME_TYPE as EXT_APPS_RESOURCE_MIME_TYPE } from '@modelcontextprotocol/ext-apps';
@@ -201,22 +202,84 @@ describe('extractOrigin', () => {
   });
 });
 
+describe('validateExternalUrl', () => {
+  it('should accept valid http URLs', () => {
+    expect(() => validateExternalUrl('http://example.com')).not.toThrow();
+  });
+
+  it('should accept valid https URLs', () => {
+    expect(() => validateExternalUrl('https://example.com/page?q=1')).not.toThrow();
+  });
+
+  it('should reject non-http protocols', () => {
+    expect(() => validateExternalUrl('ftp://example.com')).toThrow('must use http or https');
+    expect(() => validateExternalUrl('file:///etc/passwd')).toThrow('must use http or https');
+  });
+
+  it('should reject invalid URLs', () => {
+    expect(() => validateExternalUrl('not a url')).toThrow('Invalid external URL');
+  });
+
+  it('should reject localhost', () => {
+    expect(() => validateExternalUrl('http://localhost:3000')).toThrow('localhost or loopback');
+    expect(() => validateExternalUrl('http://127.0.0.1:8080')).toThrow('localhost or loopback');
+    expect(() => validateExternalUrl('http://[::1]/page')).toThrow('localhost or loopback');
+    expect(() => validateExternalUrl('http://0.0.0.0')).toThrow('localhost or loopback');
+  });
+
+  it('should reject private IPv4 ranges', () => {
+    expect(() => validateExternalUrl('http://10.0.0.1')).toThrow('private network');
+    expect(() => validateExternalUrl('http://172.16.0.1')).toThrow('private network');
+    expect(() => validateExternalUrl('http://172.31.255.255')).toThrow('private network');
+    expect(() => validateExternalUrl('http://192.168.1.1')).toThrow('private network');
+    expect(() => validateExternalUrl('http://169.254.169.254')).toThrow('private network');
+  });
+
+  it('should allow public IPs and non-private ranges', () => {
+    expect(() => validateExternalUrl('http://8.8.8.8')).not.toThrow();
+    expect(() => validateExternalUrl('http://172.32.0.1')).not.toThrow();
+    expect(() => validateExternalUrl('https://203.0.113.1')).not.toThrow();
+  });
+});
+
 describe('fetchExternalUrl', () => {
+  function mockFetchWithBody(body: string, headers?: Record<string, string>) {
+    const encoder = new TextEncoder();
+    const encoded = encoder.encode(body);
+    let readCalled = false;
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue({
+        ok: true,
+        headers: new Headers(headers ?? {}),
+        body: {
+          getReader: () => ({
+            read: () => {
+              if (!readCalled) {
+                readCalled = true;
+                return Promise.resolve({ done: false, value: encoded });
+              }
+              return Promise.resolve({ done: true, value: undefined });
+            },
+            cancel: vi.fn(),
+          }),
+        },
+      }),
+    );
+  }
+
   afterEach(() => {
     vi.unstubAllGlobals();
   });
 
   it('should fetch and inject <base> tag', async () => {
-    vi.stubGlobal(
-      'fetch',
-      vi.fn().mockResolvedValue({
-        ok: true,
-        text: () => Promise.resolve('<html><head></head><body>Hi</body></html>'),
-      }),
-    );
+    mockFetchWithBody('<html><head></head><body>Hi</body></html>');
 
     const result = await fetchExternalUrl('https://example.com/page');
-    expect(fetch).toHaveBeenCalledWith('https://example.com/page');
+    expect(fetch).toHaveBeenCalledWith('https://example.com/page', expect.objectContaining({
+      signal: expect.any(AbortSignal),
+      redirect: 'follow',
+    }));
     expect(result).toBe(
       '<html><head><base href="https://example.com/page"></head><body>Hi</body></html>',
     );
@@ -225,11 +288,72 @@ describe('fetchExternalUrl', () => {
   it('should throw on non-OK response', async () => {
     vi.stubGlobal(
       'fetch',
-      vi.fn().mockResolvedValue({ ok: false, status: 500, statusText: 'Internal Server Error' }),
+      vi.fn().mockResolvedValue({
+        ok: false,
+        status: 500,
+        statusText: 'Internal Server Error',
+        headers: new Headers(),
+      }),
     );
 
     await expect(fetchExternalUrl('https://example.com/error')).rejects.toThrow(
       'Failed to fetch external URL "https://example.com/error": 500 Internal Server Error',
+    );
+  });
+
+  it('should reject URLs with non-http protocols', async () => {
+    await expect(fetchExternalUrl('ftp://example.com')).rejects.toThrow('must use http or https');
+  });
+
+  it('should reject localhost URLs', async () => {
+    await expect(fetchExternalUrl('http://localhost:3000')).rejects.toThrow('localhost or loopback');
+  });
+
+  it('should reject private IP URLs', async () => {
+    await expect(fetchExternalUrl('http://10.0.0.1/admin')).rejects.toThrow('private network');
+  });
+
+  it('should reject responses exceeding content-length limit', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue({
+        ok: true,
+        headers: new Headers({ 'content-length': '999999999' }),
+        body: { getReader: () => ({ read: () => Promise.resolve({ done: true, value: undefined }), cancel: vi.fn() }) },
+      }),
+    );
+
+    await expect(fetchExternalUrl('https://example.com/huge')).rejects.toThrow(
+      'response too large',
+    );
+  });
+
+  it('should reject responses exceeding streaming size limit', async () => {
+    // Create a mock that returns chunks totalling over 10MB
+    const bigChunk = new Uint8Array(6 * 1024 * 1024); // 6MB
+    let callCount = 0;
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue({
+        ok: true,
+        headers: new Headers(),
+        body: {
+          getReader: () => ({
+            read: () => {
+              callCount++;
+              if (callCount <= 2) {
+                return Promise.resolve({ done: false, value: bigChunk });
+              }
+              return Promise.resolve({ done: true, value: undefined });
+            },
+            cancel: vi.fn(),
+          }),
+        },
+      }),
+    );
+
+    await expect(fetchExternalUrl('https://example.com/stream-huge')).rejects.toThrow(
+      'response too large',
     );
   });
 });
