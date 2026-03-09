@@ -3,6 +3,7 @@ import {
   sendExperimentalRequest,
 } from '../index';
 import { UI_METADATA_PREFIX } from '../types.js';
+import { mockFetchWithBody } from './test-utils';
 
 describe('@mcp-ui/server', () => {
   describe('createUIResource', () => {
@@ -34,33 +35,8 @@ describe('@mcp-ui/server', () => {
     describe('externalUrl (fetches and injects <base>)', () => {
       const MOCK_HTML = '<html><head><title>Test</title></head><body>Hello</body></html>';
 
-      function mockFetchWithHtml(html: string) {
-        const encoder = new TextEncoder();
-        const encoded = encoder.encode(html);
-        let readCalled = false;
-        vi.stubGlobal(
-          'fetch',
-          vi.fn().mockResolvedValue({
-            ok: true,
-            headers: new Headers(),
-            body: {
-              getReader: () => ({
-                read: () => {
-                  if (!readCalled) {
-                    readCalled = true;
-                    return Promise.resolve({ done: false, value: encoded });
-                  }
-                  return Promise.resolve({ done: true, value: undefined });
-                },
-                cancel: vi.fn(),
-              }),
-            },
-          }),
-        );
-      }
-
       beforeEach(() => {
-        mockFetchWithHtml(MOCK_HTML);
+        mockFetchWithBody(MOCK_HTML);
       });
 
       afterEach(() => {

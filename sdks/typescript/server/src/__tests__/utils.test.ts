@@ -8,6 +8,7 @@ import {
   validateExternalUrl,
 } from '../utils.js';
 import { UI_METADATA_PREFIX, RESOURCE_MIME_TYPE } from '../types.js';
+import { mockFetchWithBody } from './test-utils';
 import { RESOURCE_MIME_TYPE as EXT_APPS_RESOURCE_MIME_TYPE } from '@modelcontextprotocol/ext-apps';
 
 describe('getAdditionalResourceProps', () => {
@@ -243,31 +244,6 @@ describe('validateExternalUrl', () => {
 });
 
 describe('fetchExternalUrl', () => {
-  function mockFetchWithBody(body: string, headers?: Record<string, string>) {
-    const encoder = new TextEncoder();
-    const encoded = encoder.encode(body);
-    let readCalled = false;
-    vi.stubGlobal(
-      'fetch',
-      vi.fn().mockResolvedValue({
-        ok: true,
-        headers: new Headers(headers ?? {}),
-        body: {
-          getReader: () => ({
-            read: () => {
-              if (!readCalled) {
-                readCalled = true;
-                return Promise.resolve({ done: false, value: encoded });
-              }
-              return Promise.resolve({ done: true, value: undefined });
-            },
-            cancel: vi.fn(),
-          }),
-        },
-      }),
-    );
-  }
-
   afterEach(() => {
     vi.unstubAllGlobals();
   });

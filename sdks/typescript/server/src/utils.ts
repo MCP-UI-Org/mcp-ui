@@ -13,8 +13,7 @@ const BLOCKED_HOSTNAMES = new Set([
   '127.0.0.1',
   '0.0.0.0',
   '[::1]',
-  '[::0]',
-  '[0000::1]',
+  '[::]',
 ]);
 
 /**
@@ -88,13 +87,13 @@ export function validateExternalUrl(url: string): URL {
  * @returns The fetched HTML with a `<base>` tag injected.
  */
 export async function fetchExternalUrl(url: string): Promise<string> {
-  validateExternalUrl(url);
+  const parsed = validateExternalUrl(url);
 
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
 
   try {
-    const response = await fetch(url, {
+    const response = await fetch(parsed.href, {
       signal: controller.signal,
       redirect: 'follow',
     });
@@ -118,7 +117,8 @@ export async function fetchExternalUrl(url: string): Promise<string> {
       throw new Error(`MCP-UI SDK: Unable to read response body from "${url}"`);
     }
 
-    const chunks: Uint8Array[] = [];
+    const decoder = new TextDecoder();
+    let html = '';
     let totalBytes = 0;
 
     for (;;) {
@@ -131,12 +131,9 @@ export async function fetchExternalUrl(url: string): Promise<string> {
           `MCP-UI SDK: External URL response too large (exceeded ${MAX_RESPONSE_BYTES} bytes): "${url}"`,
         );
       }
-      chunks.push(value);
+      html += decoder.decode(value, { stream: true });
     }
-
-    const decoder = new TextDecoder();
-    const html = chunks.map((chunk) => decoder.decode(chunk, { stream: true })).join('') +
-      decoder.decode();
+    html += decoder.decode(); // flush remaining
 
     return injectBaseTag(html, url);
   } finally {
