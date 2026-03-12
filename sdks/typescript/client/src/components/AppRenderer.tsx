@@ -155,8 +155,6 @@ export interface AppRendererProps {
     extra: RequestHandlerExtra,
   ) => Promise<ListPromptsResult>;
 
-  // --- Fallback Handler ---
-
   /**
    * Handler for JSON-RPC requests from the guest UI that don't match any
    * built-in handler (e.g., experimental methods like "x/clipboard/write",
