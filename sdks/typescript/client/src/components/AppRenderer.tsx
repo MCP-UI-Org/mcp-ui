@@ -190,7 +190,7 @@ export interface AppRendererProps {
 /**
  * React component that renders an MCP tool's custom UI in a sandboxed iframe.
  *
- * This component manages the complete lifecycle of an MCP-UI tool:
+ * This component manages the complete lifecycle of an MCP Apps tool:
  * 1. Creates AppBridge for MCP communication
  * 2. Fetches the tool's UI resource (HTML) if not provided
  * 3. Delegates rendering to AppFrame
