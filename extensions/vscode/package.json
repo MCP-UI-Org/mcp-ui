@@ -1,0 +1,78 @@
+{
+	"name": "chat-output-renderer-sample",
+	"displayName": "chat-output-renderer-sample",
+	"description": "Sample chat output renderer extension that renders URLs.",
+	"version": "0.0.1",
+	"publisher": "vscode-samples",
+	"repository": "https://github.com/Microsoft/vscode-extension-samples/helloworld-sample",
+	"engines": {
+		"vscode": "^1.103.0"
+	},
+	"categories": [
+		"Other"
+	],
+	"enabledApiProposals": [
+		"chatOutputRenderer"
+	],
+	"activationEvents": [],
+	"main": "./out/extension.js",
+	"contributes": {
+		"languageModelTools": [
+			{
+				"name": "renderUrl",
+				"displayName": "Render URL",
+				"toolReferenceName": "renderUrl",
+				"canBeReferencedInPrompt": true,
+				"modelDescription": "Renders a URL in an iframe with mcp-ui.",
+				"userDescription": "Renders a URL in an iframe with mcp-ui.",
+				"inputSchema": {
+					"type": "object",
+					"properties": {
+						"url": {
+							"type": "string",
+							"description": "The URL to render in the iframe."
+						}
+					}
+				}
+			}
+		],
+		"chatOutputRenderer": [
+			{
+				"viewType": "mcp-ui",
+				"mimeTypes": [
+					"application/vnd.chat-output-renderer.mcp-ui"
+				]
+			}
+		]
+	},
+	"scripts": {
+		"vscode:prepublish": "npm run compile",
+		"compile": "tsc -p ./ && node esbuild.js",
+		"lint": "eslint",
+		"watch": "tsc -watch -p ./",
+		"download-api": "dts dev",
+		"postdownload-api": "dts main",
+		"postinstall": "npm run download-api"
+	},
+	"devDependencies": {
+		"@eslint/js": "^9.13.0",
+		"@stylistic/eslint-plugin": "^2.9.0",
+		"@modelcontextprotocol/sdk": "*",
+		"@types/node": "^20",
+		"@types/react": "^18.2.0",
+		"@types/react-dom": "^18.2.0",
+		"@types/vscode": "^1.73.0",
+		"@types/vscode-webview": "*",
+		"@vscode/dts": "^0.4.0",
+		"esbuild": "^0.21.4",
+		"eslint": "^9.13.0",
+		"typescript": "^5.8.2",
+		"typescript-eslint": "^8.16.0"
+	},
+	"dependencies": {
+		"@mcp-ui/client": "5.3.1",
+		"@mcp-ui/server": "5.2.0",
+		"react": "^18.3.1",
+		"react-dom": "^18.3.1"
+	}
+}
