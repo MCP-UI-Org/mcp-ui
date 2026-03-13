@@ -169,7 +169,14 @@ export const AppFrame = (props: AppFrameProps) => {
     const setup = async () => {
       try {
         // If switching to a different sandbox URL or appBridge, clean up the old iframe first
+        // and close the previous bridge to remove message listeners
         if (iframeRef.current && containerRef.current?.contains(iframeRef.current)) {
+          // Close the previous bridge if it exists (don't await to avoid blocking)
+          if (currentAppBridgeRef.current) {
+            currentAppBridgeRef.current.close().catch((err) => {
+              console.error('[AppFrame] Error closing previous bridge:', err);
+            });
+          }
           containerRef.current.removeChild(iframeRef.current);
           iframeRef.current = null;
           currentSandboxUrlRef.current = null;
@@ -237,6 +244,12 @@ export const AppFrame = (props: AppFrameProps) => {
 
     return () => {
       mounted = false;
+      // Clean up the bridge to remove message listeners when unmounting
+      // Close the current appBridge being cleaned up regardless of ref equality
+      // to ensure proper cleanup even if refs haven't been updated yet
+      appBridge.close().catch((err) => {
+        console.error('[AppFrame] Error closing bridge on unmount:', err);
+      });
     };
   }, [sandbox.url, sandbox.csp, appBridge]);
 

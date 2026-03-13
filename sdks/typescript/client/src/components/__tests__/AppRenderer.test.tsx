@@ -59,6 +59,7 @@ vi.mock('@modelcontextprotocol/ext-apps/app-bridge', () => {
         sendResourceListChanged: vi.fn(),
         sendPromptListChanged: vi.fn(),
         teardownResource: vi.fn(),
+        close: vi.fn().mockResolvedValue(undefined),
       };
       return mockBridgeInstance;
     }),
@@ -664,6 +665,56 @@ describe('<AppRenderer />', () => {
           'data-html',
           '<html><body>Custom fetched HTML</body></html>',
         );
+      });
+    });
+  });
+
+  describe('cleanup', () => {
+    it('should call bridge.close() when component unmounts', async () => {
+      const { unmount } = render(<AppRenderer {...defaultProps} />);
+
+      await waitFor(() => {
+        expect(screen.getByTestId('app-frame')).toBeInTheDocument();
+      });
+
+      // Get the bridge instance that was created
+      const bridge = mockBridgeInstance;
+      expect(bridge).not.toBeNull();
+
+      // Unmount the component
+      unmount();
+
+      // Verify close was called
+      await waitFor(() => {
+        expect(bridge?.close).toHaveBeenCalled();
+      });
+    });
+
+    it('should call bridge.close() when client changes', async () => {
+      const { rerender } = render(<AppRenderer {...defaultProps} />);
+
+      await waitFor(() => {
+        expect(screen.getByTestId('app-frame')).toBeInTheDocument();
+      });
+
+      // Get the first bridge instance
+      const firstBridge = mockBridgeInstance;
+      expect(firstBridge).not.toBeNull();
+
+      // Create a new client
+      const newClient = {
+        getServerCapabilities: vi.fn().mockReturnValue({
+          tools: {},
+          resources: {},
+        }),
+      };
+
+      // Re-render with new client
+      rerender(<AppRenderer {...defaultProps} client={newClient as unknown as Client} />);
+
+      // Verify the old bridge was closed
+      await waitFor(() => {
+        expect(firstBridge?.close).toHaveBeenCalled();
       });
     });
   });
