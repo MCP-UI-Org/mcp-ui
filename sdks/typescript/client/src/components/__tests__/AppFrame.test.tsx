@@ -333,6 +333,76 @@ describe('<AppFrame />', () => {
       });
     });
 
+    it('should not tear down iframe when parent passes a new URL instance with the same href', async () => {
+      // Regression test for https://github.com/MCP-UI-Org/mcp-ui/issues/193
+      // When a parent component renders with `sandbox={{ url: new URL(...) }}` inline
+      // (the pattern documented in AppRenderer's JSDoc example), a new URL reference is
+      // produced on every render. The effect must key on the href string, not the URL
+      // object identity, otherwise identical-content re-renders rebuild the sandbox.
+      const { rerender } = render(<AppFrame {...getPropsWithBridge()} />);
+
+      await act(() => {
+        onReadyResolve();
+      });
+
+      await act(() => {
+        registeredOninitialized?.();
+      });
+
+      expect(appHostUtils.setupSandboxProxyIframe).toHaveBeenCalledTimes(1);
+
+      // Same href, fresh URL instance
+      const sameHrefNewRef = new URL(defaultProps.sandbox.url.href);
+      expect(sameHrefNewRef).not.toBe(defaultProps.sandbox.url);
+      expect(sameHrefNewRef.href).toBe(defaultProps.sandbox.url.href);
+      rerender(<AppFrame {...getPropsWithBridge({ sandbox: { url: sameHrefNewRef } })} />);
+
+      // Iframe must be preserved — the effect should dedupe on href, not reference
+      expect(appHostUtils.setupSandboxProxyIframe).toHaveBeenCalledTimes(1);
+    });
+
+    it('should still connect bridge if parent re-renders with new URL reference mid-setup', async () => {
+      // Regression test for https://github.com/MCP-UI-Org/mcp-ui/issues/193
+      // With the bug present, a parent re-render while `await onReady` was pending would
+      // (a) fire the cleanup, setting `mounted = false`, and (b) short-circuit the re-run
+      // against stale dedupe refs written too early — leaving the bridge permanently
+      // disconnected and the app blank.
+      const { rerender } = render(<AppFrame {...getPropsWithBridge()} />);
+
+      // Wait for the initial effect to reach `await onReady` (setup is parked)
+      await waitFor(() => {
+        expect(appHostUtils.setupSandboxProxyIframe).toHaveBeenCalledTimes(1);
+      });
+
+      // Parent re-renders with a new URL instance (same href) before onReady resolves
+      const sameHrefNewRef = new URL(defaultProps.sandbox.url.href);
+      rerender(<AppFrame {...getPropsWithBridge({ sandbox: { url: sameHrefNewRef } })} />);
+
+      // Now resolve the original iframe's onReady and finish initialization
+      await act(() => {
+        onReadyResolve();
+      });
+
+      await waitFor(() => {
+        expect(mockAppBridge.connect).toHaveBeenCalledTimes(1);
+      });
+
+      await act(() => {
+        registeredOninitialized?.();
+      });
+
+      // HTML must reach the sandbox — without the fix, this call never happens.
+      await waitFor(() => {
+        expect(mockAppBridge.sendSandboxResourceReady).toHaveBeenCalledWith({
+          html: defaultProps.html,
+          csp: undefined,
+        });
+      });
+
+      // No redundant iframe creation
+      expect(appHostUtils.setupSandboxProxyIframe).toHaveBeenCalledTimes(1);
+    });
+
     it('should update HTML content without recreating iframe', async () => {
       const { rerender } = render(<AppFrame {...getPropsWithBridge()} />);
 
