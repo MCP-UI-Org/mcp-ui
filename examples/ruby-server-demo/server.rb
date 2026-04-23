@@ -46,39 +46,8 @@ class RawHtmlTool < MCP::Tool
   end
 end
 
-class RemoteDomTool < MCP::Tool
-  description 'A simple tool that returns a remote DOM script resource'
-  input_schema(
-    type: 'object',
-    properties: {}
-  )
-
-  class << self
-    def call(server_context:)
-      # A simple script that adds a paragraph to the root element.
-      remote_dom_script = <<~STR
-        const p = document.createElement('ui-text');
-        p.textContent = 'This is a remote DOM element from the server.';
-        root.appendChild(p);
-      STR
-
-      ui_resource_object = McpUiServer.create_ui_resource(
-        uri: 'ui://my-remote-dom-script',
-        content: {
-          type: :remote_dom,
-          script: remote_dom_script,
-          framework: :webcomponents
-        },
-        encoding: :text
-      )
-
-      MCP::Tool::Response.new([ui_resource_object])
-    end
-  end
-end
-
 # --- MCP Server Setup ---
-mcp_server = MCP::Server.new(tools: [ExternalUrlTool, RawHtmlTool, RemoteDomTool])
+mcp_server = MCP::Server.new(tools: [ExternalUrlTool, RawHtmlTool])
 
 # --- WEBrick HTTP Server Setup ---
 http_server = WEBrick::HTTPServer.new(Port: 8081)

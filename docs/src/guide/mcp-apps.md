@@ -56,7 +56,7 @@ The adapter:
 ```typescript
 import { createUIResource } from '@mcp-ui/server';
 
-const widgetUI = createUIResource({
+const widgetUI = await createUIResource({
   uri: 'ui://my-server/widget',
   encoding: 'text',
   content: {
@@ -70,22 +70,17 @@ const widgetUI = createUIResource({
             window.addEventListener('message', (event) => {
               if (event.data.type === 'ui-lifecycle-iframe-render-data') {
                 const { toolInput, toolOutput } = event.data.payload.renderData;
-                document.getElementById('app').textContent = 
+                document.getElementById('app').textContent =
                   JSON.stringify({ toolInput, toolOutput }, null, 2);
               }
             });
-            
+
             // Signal that the widget is ready
             window.parent.postMessage({ type: 'ui-lifecycle-iframe-ready' }, '*');
           </script>
         </body>
       </html>
     `,
-  },
-  adapters: {
-    mcpApps: {
-      enabled: true,
-    },
   },
 });
 ```
@@ -101,7 +96,7 @@ import { z } from 'zod';
 const server = new McpServer({ name: 'my-server', version: '1.0.0' });
 
 // Create the UI resource (from step 1)
-const widgetUI = createUIResource({
+const widgetUI = await createUIResource({
   uri: 'ui://my-server/widget',
   // ... (same as above)
 });
@@ -164,15 +159,14 @@ registerAppTool(
     }
   },
   async ({ query }) => {
-    // Create an embedded UI resource for MCP-UI hosts (no adapter)
-    const embeddedResource = createUIResource({
+    // Create an embedded UI resource for MCP-UI hosts
+    const embeddedResource = await createUIResource({
       uri: `ui://my-server/widget/${query}`,
       encoding: 'text',
       content: {
         type: 'rawHtml',
         htmlString: renderWidget(query),  // Your widget HTML
       },
-      // No adapters - this is for MCP-UI hosts
     });
 
     return {
@@ -321,17 +315,15 @@ If you need to support both MCP Apps hosts and ChatGPT, create separate resource
 
 ```typescript
 // For MCP Apps hosts
-const mcpAppsResource = createUIResource({
+const mcpAppsResource = await createUIResource({
   uri: 'ui://my-server/widget-mcp-apps',
   content: { type: 'rawHtml', htmlString: widgetHtml },
-  adapters: { mcpApps: { enabled: true } },
 });
 
 // For ChatGPT/Apps SDK hosts
-const appsSdkResource = createUIResource({
+const appsSdkResource = await createUIResource({
   uri: 'ui://my-server/widget-apps-sdk',
   content: { type: 'rawHtml', htmlString: widgetHtml },
-  adapters: { appsSdk: { enabled: true } },
 });
 ```
 
@@ -356,7 +348,7 @@ app.use(express.json());
 
 const server = new McpServer({ name: 'demo', version: '1.0.0' });
 
-const graphUI = createUIResource({
+const graphUI = await createUIResource({
   uri: 'ui://demo/graph',
   encoding: 'text',
   content: {
@@ -374,30 +366,27 @@ const graphUI = createUIResource({
         <h1>graph</h1>
         <div class="data" id="data">Waiting for data...</div>
         <button onclick="sendPrompt()">Ask Follow-up</button>
-        
+
         <script>
           window.addEventListener('message', (e) => {
             if (e.data.type === 'ui-lifecycle-iframe-render-data') {
-              document.getElementById('data').textContent = 
+              document.getElementById('data').textContent =
                 JSON.stringify(e.data.payload.renderData, null, 2);
             }
           });
-          
+
           function sendPrompt() {
             window.parent.postMessage({
               type: 'prompt',
               payload: { prompt: 'Tell me more about this data' }
             }, '*');
           }
-          
+
           window.parent.postMessage({ type: 'ui-lifecycle-iframe-ready' }, '*');
         </script>
       </body>
       </html>
     `,
-  },
-  adapters: {
-    mcpApps: { enabled: true },
   },
 });
 
@@ -429,15 +418,14 @@ registerAppTool(
     }
   },
   async ({ title }) => {
-    // Create embedded resource for MCP-UI hosts (no adapter)
-    const embeddedResource = createUIResource({
+    // Create embedded resource for MCP-UI hosts
+    const embeddedResource = await createUIResource({
       uri: `ui://demo/graph/${encodeURIComponent(title)}`,
       encoding: 'text',
       content: {
         type: 'rawHtml',
         htmlString: `<html><body><h1>Graph: ${title}</h1></body></html>`,
       },
-      // No adapters - for MCP-UI hosts only
     });
 
     return {
@@ -512,6 +500,7 @@ function ToolUI({ client, toolName, toolInput, toolResult }) {
 - `hostInfo` - Host application identification (name and version). Defaults to `{ name: 'MCP-UI Host', version: '1.0.0' }`
 - `hostCapabilities` - Host capabilities to advertise to the MCP app (e.g., `openLinks`, `serverTools`, `logging`)
 - `onOpenLink` / `onMessage` / `onLoggingMessage` - Handlers for guest UI requests
+- `onFallbackRequest` - Catch-all for JSON-RPC requests not handled by the built-in handlers (see [Handling Custom Requests](#handling-custom-requests-onfallbackrequest))
 
 **Ref Methods:**
 - `sendToolListChanged()` - Notify guest when tools change
@@ -519,6 +508,7 @@ function ToolUI({ client, toolName, toolInput, toolResult }) {
 - `sendPromptListChanged()` - Notify guest when prompts change
 - `teardownResource()` - Clean up before unmounting
 
+<<<<<<< copilot/add-hostinfo-hostcapabilities-props
 ### Customizing Host Identity
 
 By default, `AppRenderer` identifies itself as "MCP-UI Host" to guest apps. You can customize the host identity and capabilities to properly identify your application:
@@ -554,6 +544,56 @@ function ToolUI({ client, toolName }) {
 ```
 
 This allows guest apps to know they're running in your specific host application and what capabilities are available.
+=======
+### Handling Custom Requests (`onFallbackRequest`)
+
+AppRenderer includes built-in handlers for standard MCP Apps methods (`tools/call`, `ui/message`, `ui/open-link`, etc.). The `onFallbackRequest` prop lets you handle **any JSON-RPC request that doesn't match a built-in handler**. This is useful for:
+
+- **Experimental methods** — prototype new capabilities (e.g., `x/clipboard/write`, `x/analytics/track`)
+- **MCP methods not yet in the Apps spec** — support standard MCP methods like `sampling/createMessage` before they're officially added to MCP Apps
+
+Under the hood, this is wired to `AppBridge`'s `fallbackRequestHandler` from the MCP SDK `Protocol` class. The guest UI sends a standard JSON-RPC request via `postMessage`, and if AppBridge has no registered handler for the method, it delegates to `onFallbackRequest`.
+
+**Host-side handler:**
+
+```tsx
+import { AppRenderer, type JSONRPCRequest } from '@mcp-ui/client';
+import { McpError, ErrorCode } from '@modelcontextprotocol/sdk/types.js';
+
+<AppRenderer
+  client={client}
+  toolName="my-tool"
+  sandbox={sandboxConfig}
+  onFallbackRequest={async (request, extra) => {
+    switch (request.method) {
+      case 'x/clipboard/write':
+        await navigator.clipboard.writeText(request.params?.text as string);
+        return { success: true };
+      case 'sampling/createMessage':
+        // Forward to MCP server
+        return client.createMessage(request.params);
+      default:
+        throw new McpError(ErrorCode.MethodNotFound, `Unknown method: ${request.method}`);
+    }
+  }}
+/>
+```
+
+**Guest-side (inside tool UI HTML):**
+
+```ts
+import { sendExperimentalRequest } from '@mcp-ui/server';
+
+// Send a custom request to the host — returns a Promise with the response
+const result = await sendExperimentalRequest('x/clipboard/write', { text: 'hello' });
+```
+
+The `sendExperimentalRequest` helper sends a properly formatted JSON-RPC request via `window.parent.postMessage`. The full request/response cycle flows through `PostMessageTransport` and the sandbox proxy, just like built-in methods.
+
+::: tip Method Naming Convention
+Use the `x/<namespace>/<action>` prefix for experimental methods (e.g., `x/clipboard/write`). Standard MCP methods not yet in the Apps spec (e.g., `sampling/createMessage`) should use their canonical method names. When an experimental method proves useful, it can be promoted to a standard method in the [ext-apps spec](https://github.com/modelcontextprotocol/ext-apps).
+:::
+>>>>>>> main
 
 ### Using Without an MCP Client
 

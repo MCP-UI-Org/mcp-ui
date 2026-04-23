@@ -61,7 +61,7 @@ export interface UIResource {
   type: 'resource';
   resource: {
     uri: string;
-    mimeType: 'text/html' | 'text/uri-list' | 'application/vnd.mcp-ui.remote-dom';
+    mimeType: 'text/html;profile=mcp-app';
     text?: string;
     blob?: string;
   };
@@ -72,16 +72,10 @@ export interface UIResource {
 
 - **`ui://<component-name>/<instance-id>`**
 
-  - **Purpose**: For all UI resources. The rendering method is determined by `mimeType`.
-  - **Content**: `text` or `blob` contains either HTML string or URL string.
-  - **Client Action**: 
-    - If `mimeType: 'text/html'` → Render in a sandboxed iframe using `srcdoc`
-    - If `mimeType: 'text/uri-list'` → Render in a sandboxed iframe using `src`
-    - If `mimeType: 'application/vnd.mcp-ui.remote-dom'` → Execute in sandboxed iframe and render in the tree
-  - **Examples**: 
-    - HTML content: A custom button, a small form, a data visualization snippet
-    - URL content: Embedding a Grafana dashboard, a third-party widget, a mini-application
-    - RemoteDOM content: A component to be rendered with the host's look-and-feel (component library)
+  - **Purpose**: For all UI resources.
+  - **Content**: `text` or `blob` contains HTML content.
+  - **Client Action**: Render in a sandboxed iframe
+  - **Examples**: A custom button, a small form, a data visualization snippet, a fetched external page
 
 ## Content encoding: `text` vs. `blob`
 
@@ -90,56 +84,29 @@ export interface UIResource {
   - **Pros**: Handles special characters robustly, can be better for larger payloads, ensures integrity during JSON transport.
   - **Cons**: Requires Base64 decoding on the client, slightly increases payload size.
 
-## URI List Format Support
+## External URL Handling
 
-When using `mimeType: 'text/uri-list'`, the content follows the standard URI list format (RFC 2483). However, **MCP-UI requires a single URL** for rendering. For security reasons, the protocol must be `http/s`.
+When using `createUIResource` with `content.type: 'externalUrl'`, the behavior depends on the SDK:
 
-- **Single URL Requirement**: MCP-UI will use only the first valid URL found
-- **Multiple URLs**: If multiple URLs are provided, the client will use the first valid URL and log a warning about the ignored alternatives
-- **Comments**: Lines starting with `#` are treated as comments and ignored
-- **Empty lines**: Blank lines are ignored
+- **TypeScript SDK**: Fetches the URL's HTML content server-side, injects a `<base>` tag so relative paths (CSS, JS, images) resolve against the original URL, and returns the resulting HTML as the resource content. It also validates the URL (http/https only, blocks private/localhost addresses) and enforces a timeout and response size limit. The SDK automatically populates `_meta.csp.baseUriDomains` with the external URL's origin, so the host's sandbox iframe can set appropriate CSP headers.
+- **Python and Ruby SDKs**: Store the URL string directly as the resource content without fetching it. The host client is responsible for fetching and rendering the external page.
 
-**Example URI List Content:**
-```
-# Primary dashboard URL
-https://dashboard.example.com/main
-
-# Backup dashboard URL (will be ignored but logged)
-https://backup.dashboard.example.com/main
-```
-
-**Client Behavior:**
-- Uses `https://dashboard.example.com/main` for rendering
-- Logs: `"Multiple URLs found in uri-list content. Using the first URL: "https://dashboard.example.com/main". Other URLs ignored: ["https://backup.dashboard.example.com/main"]"`
-
-This design allows for fallback URLs to be specified in the standard format while maintaining simple client implementation that focuses on a single primary URL.
+> **Note:** Not all hosts support `baseUriDomains`. Those that don't will ignore this field, which may cause the `<base>` tag to be blocked by the sandbox CSP.
+>
+> **Security:** The TypeScript SDK's server-side fetch introduces SSRF risk if the URL is derived from untrusted user input. The SDK blocks private IP ranges and localhost by default, but server developers should apply additional validation (e.g., URL allowlists) when the URL originates from user input. DNS rebinding attacks are not mitigated at the SDK level.
 
 ## Recommended Client-Side Pattern
 
-Client-side hosts should check for the `ui://` URI scheme first to identify MCP-UI resources, rather than checking mimeType:
+Client-side hosts should check for the `ui://` URI scheme to identify MCP-UI resources:
 
 ```tsx
-// ✅ Recommended: Check URI scheme first
 if (
   mcpResource.type === 'resource' &&
   mcpResource.resource.uri?.startsWith('ui://')
 ) {
-  return <UIResourceRenderer resource={mcpResource.resource} onUIAction={handleAction} />;
-}
-
-// ❌ Not recommended: Check mimeType first
-if (
-  mcpResource.type === 'resource' &&
-  (mcpResource.resource.mimeType === 'text/html' || mcpResource.resource.mimeType === 'text/uri-list')
-) {
-  return <UIResourceRenderer resource={mcpResource.resource} onUIAction={handleAction} />;
+  return <AppRenderer client={client} toolName={toolName} ... />;
 }
 ```
-
-**Benefits of URI-first checking:**
-- Future-proof: Works with new content types like `application/javascript`
-- Semantic clarity: `ui://` clearly indicates this is a UI resource
-- Simpler logic: Let the `UIResourceRenderer` component handle mimeType-based rendering internally
 
 ## Communication (Client <-> Iframe)
 

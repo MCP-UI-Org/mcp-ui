@@ -41,7 +41,7 @@ print("Resource 1:", resource1.model_dump_json(indent=2))
 #   "type": "resource",
 #   "resource": {
 #     "uri": "ui://my-component/instance-1",
-#     "mimeType": "text/html",
+#     "mimeType": "text/html;profile=mcp-app",
 #     "text": "<p>Hello World</p>"
 #   }
 # }
@@ -62,7 +62,7 @@ print("Resource 2 (blob will be Base64):", resource2.model_dump_json(indent=2))
 #   "type": "resource",
 #   "resource": {
 #     "uri": "ui://my-component/instance-2",
-#     "mimeType": "text/html",
+#     "mimeType": "text/html;profile=mcp-app",
 #     "blob": "PGgxPkNvbXBsZXggSFRNTDwvaDE+"
 #   }
 # }

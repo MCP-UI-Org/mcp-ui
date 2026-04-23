@@ -1,3 +1,10 @@
+# [6.1.0](https://github.com/MCP-UI-Org/mcp-ui/compare/server/v6.0.1...server/v6.1.0) (2026-02-13)
+
+
+### Features
+
+* support experimental messages ([#176](https://github.com/MCP-UI-Org/mcp-ui/issues/176)) ([327e4d9](https://github.com/MCP-UI-Org/mcp-ui/commit/327e4d9e6771eceb42f8823ae864e6758f371970))
+
 ## [6.0.1](https://github.com/MCP-UI-Org/mcp-ui/compare/server/v6.0.0...server/v6.0.1) (2026-02-06)
 
 

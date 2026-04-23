@@ -28,14 +28,14 @@ class TestUIMetadata:
             }
         }
         resource = create_ui_resource(options)
-        
+
         result = resource.model_dump()
-        
+
         # Check that metadata is properly prefixed and included (meta field, serializes to _meta with by_alias=True)
         assert result["resource"]["meta"] is not None
         assert f"{UI_METADATA_PREFIX}preferred-frame-size" in result["resource"]["meta"]
         assert result["resource"]["meta"][f"{UI_METADATA_PREFIX}preferred-frame-size"] == [800, 600]
-        
+
         # Also verify by_alias=True serialization produces _meta
         result_with_alias = resource.model_dump(by_alias=True)
         assert "_meta" in result_with_alias["resource"]
@@ -54,9 +54,9 @@ class TestUIMetadata:
             }
         }
         resource = create_ui_resource(options)
-        
+
         result = resource.model_dump()
-        
+
         # Check that all metadata fields are properly prefixed and included
         assert result["resource"]["meta"] is not None
         assert f"{UI_METADATA_PREFIX}preferred-frame-size" in result["resource"]["meta"]
@@ -77,9 +77,9 @@ class TestUIMetadata:
             }
         }
         resource = create_ui_resource(options)
-        
+
         result = resource.model_dump()
-        
+
         # Check that custom metadata is included without prefix
         assert result["resource"]["meta"] is not None
         assert result["resource"]["meta"]["customKey"] == "customValue"
@@ -97,9 +97,9 @@ class TestUIMetadata:
             }
         }
         resource = create_ui_resource(options)
-        
+
         result = resource.model_dump()
-        
+
         # Check that both types of metadata are included
         assert result["resource"]["meta"] is not None
         assert f"{UI_METADATA_PREFIX}preferred-frame-size" in result["resource"]["meta"]
@@ -118,9 +118,9 @@ class TestUIMetadata:
             }
         }
         resource = create_ui_resource(options)
-        
+
         result = resource.model_dump()
-        
+
         # Custom metadata should override UI metadata
         assert result["resource"]["meta"] is not None
         assert result["resource"]["meta"][f"{UI_METADATA_PREFIX}preferred-frame-size"] == [1024, 768]
@@ -128,9 +128,9 @@ class TestUIMetadata:
     def test_create_resource_without_metadata(self, basic_raw_html_options):
         """Test creating a resource without any metadata."""
         resource = create_ui_resource(basic_raw_html_options)
-        
+
         result = resource.model_dump()
-        
+
         # No metadata should be present
         assert result["resource"]["meta"] is None
 
@@ -148,34 +148,12 @@ class TestUIMetadata:
             }
         }
         resource = create_ui_resource(options)
-        
+
         result = resource.model_dump()
-        
+
         assert result["resource"]["meta"] is not None
         assert f"{UI_METADATA_PREFIX}preferred-frame-size" in result["resource"]["meta"]
         assert result["resource"]["meta"][f"{UI_METADATA_PREFIX}preferred-frame-size"] == ["100%", "500px"]
-
-    def test_metadata_with_remote_dom_content(self):
-        """Test metadata with remote DOM content type."""
-        options = {
-            "uri": "ui://test-remote-dom",
-            "content": {
-                "type": "remoteDom",
-                "script": "const p = document.createElement('p');",
-                "framework": "react",
-            },
-            "encoding": "text",
-            "uiMetadata": {
-                "initial-render-data": {"userId": "123"},
-            }
-        }
-        resource = create_ui_resource(options)
-        
-        result = resource.model_dump()
-        
-        assert result["resource"]["meta"] is not None
-        assert f"{UI_METADATA_PREFIX}initial-render-data" in result["resource"]["meta"]
-        assert result["resource"]["meta"][f"{UI_METADATA_PREFIX}initial-render-data"] == {"userId": "123"}
 
     def test_metadata_with_blob_encoding(self):
         """Test metadata with blob encoding."""
@@ -188,9 +166,9 @@ class TestUIMetadata:
             }
         }
         resource = create_ui_resource(options)
-        
+
         result = resource.model_dump()
-        
+
         # Verify metadata is present with blob encoding
         assert result["resource"]["meta"] is not None
         assert f"{UI_METADATA_PREFIX}preferred-frame-size" in result["resource"]["meta"]
@@ -205,9 +183,9 @@ class TestUIMetadata:
             "uiMetadata": {}
         }
         resource = create_ui_resource(options)
-        
+
         result = resource.model_dump()
-        
+
         # Empty metadata dict should not create meta field
         assert result["resource"]["meta"] is None
 
@@ -218,8 +196,8 @@ class TestUIMetadata:
             "metadata": {}
         }
         resource = create_ui_resource(options)
-        
+
         result = resource.model_dump()
-        
+
         # Empty metadata dict should not create meta field
         assert result["resource"]["meta"] is None

@@ -11,13 +11,17 @@ describe('isUIResource', () => {
     },
     {
       type: 'resource',
-      resource: { uri: 'ui://test', mimeType: 'text/uri-list', text: 'https://example.com' },
+      resource: {
+        uri: 'ui://test',
+        mimeType: 'text/html;profile=mcp-app',
+        text: 'https://example.com',
+      },
     },
     {
       type: 'resource',
       resource: {
         uri: 'ui://test',
-        mimeType: 'application/vnd.mcp-ui.remote-dom',
+        mimeType: 'text/html;profile=mcp-app',
         text: 'Hello, world!',
       },
     },

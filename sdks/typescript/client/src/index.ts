@@ -1,4 +1,3 @@
-export { UIResourceRenderer } from './components/UIResourceRenderer';
 export { getUIResourceMetadata, getResourceMetadata } from './utils/metadataUtils';
 export { isUIResource } from './utils/isUIResource';
 
@@ -33,7 +32,7 @@ export {
 } from '@modelcontextprotocol/ext-apps/app-bridge';
 
 // Re-export MCP SDK types commonly used with AppRenderer
-export { type Implementation } from '@modelcontextprotocol/sdk/types.js';
+export type { Implementation, JSONRPCRequest } from '@modelcontextprotocol/sdk/types.js';
 
 // The types needed to create a custom component library
 export type {
@@ -42,26 +41,5 @@ export type {
   RemoteElementConfiguration,
 } from './types';
 
-// Export the default libraries so hosts can register them if they choose
-export { basicComponentLibrary } from './remote-dom/component-libraries/basic';
 
-// --- Remote Element Extensibility ---
-export {
-  remoteCardDefinition,
-  remoteButtonDefinition,
-  remoteTextDefinition,
-  remoteStackDefinition,
-  remoteImageDefinition,
-} from './remote-dom/remote-elements';
-
-export type {
-  UIActionResult,
-  UIActionType,
-  ResourceContentType,
-  ALL_RESOURCE_CONTENT_TYPES,
-  UIActionResultIntent,
-  UIActionResultLink,
-  UIActionResultNotification,
-  UIActionResultPrompt,
-  UIActionResultToolCall,
-} from './types';
+export type { UIResourceMetadata } from './types';

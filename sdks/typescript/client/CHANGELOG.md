@@ -1,3 +1,29 @@
+# [7.0.0](https://github.com/MCP-UI-Org/mcp-ui/compare/client/v6.1.1...client/v7.0.0) (2026-03-12)
+
+
+### Bug Fixes
+
+* bump major for breaking change ([#187](https://github.com/MCP-UI-Org/mcp-ui/issues/187)) ([2223e76](https://github.com/MCP-UI-Org/mcp-ui/commit/2223e76b229559ae6f39d63dd581a08b52e35acd))
+
+
+### BREAKING CHANGES
+
+* failed to bump major in the last commit because of semantic release
+
+## [6.1.1](https://github.com/MCP-UI-Org/mcp-ui/compare/client/v6.1.0...client/v6.1.1) (2026-03-12)
+
+
+### Bug Fixes
+
+* bump version for legacy removal ([#186](https://github.com/MCP-UI-Org/mcp-ui/issues/186)) ([0a75453](https://github.com/MCP-UI-Org/mcp-ui/commit/0a754533c92b6e9e317bda03383fc2c2745b37c7))
+
+# [6.1.0](https://github.com/MCP-UI-Org/mcp-ui/compare/client/v6.0.0...client/v6.1.0) (2026-02-13)
+
+
+### Features
+
+* support experimental messages ([#176](https://github.com/MCP-UI-Org/mcp-ui/issues/176)) ([327e4d9](https://github.com/MCP-UI-Org/mcp-ui/commit/327e4d9e6771eceb42f8823ae864e6758f371970))
+
 # [6.0.0](https://github.com/MCP-UI-Org/mcp-ui/compare/client/v5.18.0...client/v6.0.0) (2026-01-26)
 
 

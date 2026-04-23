@@ -1,7 +1,184 @@
-import type { CreateUIResourceOptions, UIResourceProps, AdaptersConfig } from './types.js';
-import { UI_METADATA_PREFIX, RESOURCE_MIME_TYPE } from './types.js';
-import { getAppsSdkAdapterScript } from './adapters/appssdk/adapter.js';
-import { getMcpAppsAdapterScript } from './adapters/mcp-apps/adapter.js';
+import type { CreateUIResourceOptions, UIResourceProps } from './types.js';
+import { UI_METADATA_PREFIX } from './types.js';
+
+/** Maximum response body size in bytes (10 MB). */
+const MAX_RESPONSE_BYTES = 10 * 1024 * 1024;
+
+/** Default fetch timeout in milliseconds (30 seconds). */
+const FETCH_TIMEOUT_MS = 30_000;
+
+/** Hostnames that are always blocked to prevent SSRF. */
+const BLOCKED_HOSTNAMES = new Set([
+  'localhost',
+  '127.0.0.1',
+  '0.0.0.0',
+  '[::1]',
+  '[::]',
+]);
+
+/**
+ * Returns true if the hostname belongs to a private/reserved IPv4 range.
+ * Checks 10.x.x.x, 172.16-31.x.x, 192.168.x.x, and 169.254.x.x (link-local).
+ */
+function isPrivateIPv4(hostname: string): boolean {
+  const parts = hostname.split('.');
+  if (parts.length !== 4) return false;
+  const nums = parts.map(Number);
+  if (nums.some((n) => isNaN(n) || n < 0 || n > 255)) return false;
+
+  const [a, b] = nums;
+  // 10.0.0.0/8
+  if (a === 10) return true;
+  // 172.16.0.0/12
+  if (a === 172 && b >= 16 && b <= 31) return true;
+  // 192.168.0.0/16
+  if (a === 192 && b === 168) return true;
+  // 169.254.0.0/16 (link-local)
+  if (a === 169 && b === 254) return true;
+
+  return false;
+}
+
+/**
+ * Validates that a URL is safe for server-side fetching.
+ * Restricts to http/https and blocks private/reserved network addresses.
+ *
+ * @throws Error if the URL is invalid or targets a restricted address.
+ */
+export function validateExternalUrl(url: string): URL {
+  let parsed: URL;
+  try {
+    parsed = new URL(url);
+  } catch {
+    throw new Error(`MCP-UI SDK: Invalid external URL: "${url}"`);
+  }
+
+  if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') {
+    throw new Error(
+      `MCP-UI SDK: External URL must use http or https protocol, got "${parsed.protocol}" in "${url}"`,
+    );
+  }
+
+  const hostname = parsed.hostname.toLowerCase();
+
+  if (BLOCKED_HOSTNAMES.has(hostname)) {
+    throw new Error(
+      `MCP-UI SDK: External URL must not target localhost or loopback addresses: "${url}"`,
+    );
+  }
+
+  if (isPrivateIPv4(hostname)) {
+    throw new Error(
+      `MCP-UI SDK: External URL must not target private network addresses: "${url}"`,
+    );
+  }
+
+  return parsed;
+}
+
+/**
+ * Fetches the HTML content from an external URL and injects a `<base>` tag
+ * so that relative paths (CSS, JS, images, etc.) resolve against the original URL.
+ *
+ * Includes SSRF protections (protocol/host validation), a timeout, and a
+ * response size limit.
+ *
+ * @param url The external URL to fetch.
+ * @returns The fetched HTML with a `<base>` tag injected.
+ */
+export async function fetchExternalUrl(url: string): Promise<string> {
+  const parsed = validateExternalUrl(url);
+
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
+
+  try {
+    const response = await fetch(parsed.href, {
+      signal: controller.signal,
+      redirect: 'follow',
+    });
+
+    if (!response.ok) {
+      throw new Error(
+        `MCP-UI SDK: Failed to fetch external URL "${url}": ${response.status} ${response.statusText}`,
+      );
+    }
+
+    const contentLength = response.headers.get('content-length');
+    if (contentLength && parseInt(contentLength, 10) > MAX_RESPONSE_BYTES) {
+      throw new Error(
+        `MCP-UI SDK: External URL response too large (${contentLength} bytes, max ${MAX_RESPONSE_BYTES}): "${url}"`,
+      );
+    }
+
+    // Read body in chunks to enforce size limit even without content-length
+    const reader = response.body?.getReader();
+    if (!reader) {
+      throw new Error(`MCP-UI SDK: Unable to read response body from "${url}"`);
+    }
+
+    const decoder = new TextDecoder();
+    let html = '';
+    let totalBytes = 0;
+
+    for (;;) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      totalBytes += value.byteLength;
+      if (totalBytes > MAX_RESPONSE_BYTES) {
+        reader.cancel();
+        throw new Error(
+          `MCP-UI SDK: External URL response too large (exceeded ${MAX_RESPONSE_BYTES} bytes): "${url}"`,
+        );
+      }
+      html += decoder.decode(value, { stream: true });
+    }
+    html += decoder.decode(); // flush remaining
+
+    return injectBaseTag(html, url);
+  } finally {
+    clearTimeout(timeoutId);
+  }
+}
+
+/**
+ * Injects a `<base href="...">` tag into HTML so relative paths resolve against
+ * the given URL. If the HTML already contains a `<base` tag, it is left as-is.
+ */
+export function injectBaseTag(html: string, url: string): string {
+  // Don't add <base> if one already exists
+  if (/<base\s/i.test(html)) {
+    return html;
+  }
+
+  const baseTag = `<base href="${escapeHtmlAttr(url)}">`;
+
+  // Inject after <head> or <head ...> if present
+  const headMatch = html.match(/<head(\s[^>]*)?>/i);
+  if (headMatch) {
+    const insertPos = headMatch.index! + headMatch[0].length;
+    return html.slice(0, insertPos) + baseTag + html.slice(insertPos);
+  }
+
+  // No <head> tag — prepend
+  return baseTag + html;
+}
+
+function escapeHtmlAttr(str: string): string {
+  return str.replace(/&/g, '&amp;').replace(/"/g, '&quot;');
+}
+
+/**
+ * Extracts the origin (scheme + host) from a URL string.
+ * Returns undefined if the URL is invalid.
+ */
+export function extractOrigin(url: string): string | undefined {
+  try {
+    return new URL(url).origin;
+  } catch {
+    return undefined;
+  }
+}
 
 export function getAdditionalResourceProps(
   resourceOptions: Partial<CreateUIResourceOptions>,
@@ -61,85 +238,4 @@ export function utf8ToBase64(str: string): string {
       );
     }
   }
-}
-
-/**
- * Determines the MIME type based on enabled adapters.
- *
- * @param adaptersConfig - Configuration for all adapters
- * @returns The MIME type to use, or undefined if no adapters are enabled
- */
-export function getAdapterMimeType(adaptersConfig?: AdaptersConfig): string | undefined {
-  if (!adaptersConfig) {
-    return undefined;
-  }
-
-  // Apps SDK adapter
-  if (adaptersConfig.appsSdk?.enabled) {
-    return adaptersConfig.appsSdk.mimeType ?? 'text/html+skybridge';
-  }
-
-  // MCP Apps adapter uses the official MIME type from @modelcontextprotocol/ext-apps
-  if (adaptersConfig.mcpApps?.enabled) {
-    return RESOURCE_MIME_TYPE;
-  }
-
-  // Future adapters can be added here by checking for their config and returning their mime type.
-
-  return undefined;
-}
-
-/**
- * Wraps HTML content with enabled adapter scripts.
- * This allows the HTML to communicate with different platform environments.
- *
- * @param htmlContent - The HTML content to wrap
- * @param adaptersConfig - Configuration for all adapters
- * @returns The wrapped HTML content with adapter scripts injected
- */
-export function wrapHtmlWithAdapters(htmlContent: string, adaptersConfig?: AdaptersConfig): string {
-  if (!adaptersConfig) {
-    return htmlContent;
-  }
-
-  const adapterScripts: string[] = [];
-
-  // Apps SDK adapter
-  if (adaptersConfig.appsSdk?.enabled) {
-    const script = getAppsSdkAdapterScript(adaptersConfig.appsSdk.config);
-    adapterScripts.push(script);
-  }
-
-  // MCP Apps adapter
-  if (adaptersConfig.mcpApps?.enabled) {
-    const script = getMcpAppsAdapterScript(adaptersConfig.mcpApps.config);
-    adapterScripts.push(script);
-  }
-
-  // Future adapters can be added here by checking for their config and pushing their scripts to adapterScripts.
-
-  // If no adapters are enabled, return original HTML
-  if (adapterScripts.length === 0) {
-    return htmlContent;
-  }
-
-  // Combine all adapter scripts
-  const combinedScripts = adapterScripts.join('\n');
-
-  let finalHtmlContent: string;
-
-  // If the HTML already has a <head> tag, inject the adapter scripts into it
-  if (htmlContent.includes('<head>')) {
-    finalHtmlContent = htmlContent.replace('<head>', `<head>\n${combinedScripts}`);
-  }
-  // If the HTML has an <html> tag but no <head>, add a <head> with the adapter scripts
-  else if (htmlContent.includes('<html>')) {
-    finalHtmlContent = htmlContent.replace('<html>', `<html>\n<head>\n${combinedScripts}\n</head>`);
-  }
-  // Otherwise, prepend the adapter scripts before the content
-  else {
-    finalHtmlContent = `${combinedScripts}\n${htmlContent}`;
-  }
-
-  return finalHtmlContent;
 }

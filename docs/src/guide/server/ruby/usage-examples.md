@@ -24,7 +24,7 @@ puts "Resource 1: #{JSON.pretty_generate(resource1)}"
 #   "type": "resource",
 #   "resource": {
 #     "uri": "ui://my-component/instance-1",
-#     "mimeType": "text/html",
+#     "mimeType": "text/html;profile=mcp-app",
 #     "text": "<p>Hello World</p>"
 #   }
 # }
@@ -41,7 +41,7 @@ puts "Resource 2 (blob will be Base64): #{JSON.pretty_generate(resource2)}"
 #   "type": "resource",
 #   "resource": {
 #     "uri": "ui://my-component/instance-2",
-#     "mimeType": "text/html",
+#     "mimeType": "text/html;profile=mcp-app",
 #     "blob": "PGgxPkNvbXBsZXggSFRNTDwvaDE+"
 #   }
 # }
@@ -59,7 +59,7 @@ puts "Resource 3: #{JSON.pretty_generate(resource3)}"
 #   "type": "resource",
 #   "resource": {
 #     "uri": "ui://analytics-dashboard/main",
-#     "mimeType": "text/uri-list",
+#     "mimeType": "text/html;profile=mcp-app",
 #     "text": "https://my.analytics.com/dashboard/123"
 #   }
 # }
@@ -77,38 +77,8 @@ puts "Resource 4 (blob will be Base64 of URL): #{JSON.pretty_generate(resource4)
 #   "type": "resource",
 #   "resource": {
 #     "uri": "ui://live-chart/session-xyz",
-#     "mimeType": "text/uri-list",
+#     "mimeType": "text/html;profile=mcp-app",
 #     "blob": "aHR0cHM6Ly9jaGFydHMuZXhhbXBsZS5jb20vYXBpP3R5cGU9cGllJmRhdGE9MSwyLDM="
-#   }
-# }
-
-# Example 5: Remote DOM script, text encoding
-remote_dom_script = <<-SCRIPT
-  const button = document.createElement('ui-button');
-  button.setAttribute('label', 'Click me for a tool call!');
-  button.addEventListener('press', () => {
-    window.parent.postMessage({ type: 'tool', payload: { toolName: 'uiInteraction', params: { action: 'button-click', from: 'remote-dom' } } }, '*');
-  });
-  root.appendChild(button);
-SCRIPT
-
-resource5 = McpUiServer.create_ui_resource(
-  uri: 'ui://remote-component/action-button',
-  content: {
-    type: :remote_dom,
-    script: remote_dom_script,
-    framework: :react # or :webcomponents
-  },
-  encoding: :text
-)
-puts "Resource 5: #{JSON.pretty_generate(resource5)}"
-# Output for Resource 5:
-# {
-#   "type": "resource",
-#   "resource": {
-#     "uri": "ui://remote-component/action-button",
-#     "mimeType": "application/vnd.mcp-ui.remote-dom+javascript; framework=react",
-#     "text": "  const button = document.createElement('ui-button');\n  button.setAttribute('label', 'Click me for a tool call!');\n  button.addEventListener('press', () => {\n    window.parent.postMessage({ type: 'tool', payload: { toolName: 'uiInteraction', params: { action: 'button-click', from: 'remote-dom' } } }, '*');\n  });\n  root.appendChild(button);\n"
 #   }
 # }
 

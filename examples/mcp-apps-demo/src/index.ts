@@ -57,7 +57,7 @@ app.post('/mcp', async (req, res) => {
     });
 
     // Register a tool with a UI interface using the MCP Apps adapter
-    const weatherDashboardUI = createUIResource({
+    const weatherDashboardUI = await createUIResource({
       uri: 'ui://weather-server/dashboard-template',
       encoding: 'text',
       content: {

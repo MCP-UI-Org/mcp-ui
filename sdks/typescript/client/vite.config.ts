@@ -8,7 +8,7 @@ export default defineConfig({
     react(),
     dts({
       insertTypesEntry: false,
-      exclude: ['**/__tests__/**', '**/*.test.ts', '**/*.spec.ts', '**/UIResourceRendererWC.tsx'],
+      exclude: ['**/__tests__/**', '**/*.test.ts', '**/*.spec.ts'],
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
     }) as any,
   ],

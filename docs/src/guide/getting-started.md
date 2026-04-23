@@ -49,7 +49,7 @@ import { z } from 'zod';
 const server = new McpServer({ name: 'my-server', version: '1.0.0' });
 
 // 2. Create the UI resource with interactive HTML
-const widgetUI = createUIResource({
+const widgetUI = await createUIResource({
   uri: 'ui://my-server/widget',
   content: {
     type: 'rawHtml',
@@ -124,9 +124,7 @@ registerAppTool(
 ```
 
 ::: tip MCP Apps Protocol
-The example above uses the [`@modelcontextprotocol/ext-apps`](https://github.com/modelcontextprotocol/ext-apps) `App` class for communication. This is the recommended approach for MCP Apps hosts. See [Protocol Details](./protocol-details) for the full JSON-RPC API.
-
-For legacy MCP-UI hosts, you can use the simpler postMessage protocol with the [MCP Apps Adapter](./mcp-apps).
+The example above uses the [`@modelcontextprotocol/ext-apps`](https://github.com/modelcontextprotocol/ext-apps) `App` class for communication. See [Protocol Details](./protocol-details) for the full JSON-RPC API.
 :::
 
 ### Client Side
@@ -197,33 +195,30 @@ Or provide pre-fetched HTML directly:
 
 MCP Apps supports several UI content types:
 
-### 1. HTML Resources (`text/html`)
+### 1. HTML Resources
 
 Direct HTML content rendered in a sandboxed iframe:
 
 ```typescript
-const htmlResource = createUIResource({
+const htmlResource = await createUIResource({
   uri: 'ui://my-tool/widget',
   content: { type: 'rawHtml', htmlString: '<h1>Hello World</h1>' },
   encoding: 'text',
 });
 ```
 
-### 2. External URLs (Legacy)
+### 2. External URLs
 
-External applications embedded via iframe:
+Fetch an external page's HTML and serve it as a UI resource. The SDK fetches the URL's contents server-side and injects a `<base>` tag so relative paths (CSS, JS, images) resolve correctly:
 
 ```typescript
-const urlResource = createUIResource({
+const urlResource = await createUIResource({
   uri: 'ui://my-tool/external',
   content: { type: 'externalUrl', iframeUrl: 'https://example.com' },
   encoding: 'text',
 });
+// The resource now contains the fetched HTML with a <base href="https://example.com"> tag
 ```
-
-::: warning External URLs
-External URLs now use the same MIME type (`text/html;profile=mcp-app`) as raw HTML. Host support for external URLs varies - some hosts may detect URL content and embed it in an iframe, while others may not support this content type.
-:::
 
 ## Declaring UI Extension Support
 
@@ -246,56 +241,6 @@ const client = new Client(
   { capabilities }
 );
 ```
-
-## Legacy MCP-UI Pattern
-
-For hosts that don't yet support MCP Apps, you can embed UI resources directly in tool responses:
-
-### Server Side (Legacy)
-
-```typescript
-import { createUIResource } from '@mcp-ui/server';
-
-// Create resource
-const resource = createUIResource({
-  uri: 'ui://my-tool/widget',
-  content: { type: 'rawHtml', htmlString: '<h1>Widget</h1>' },
-  encoding: 'text',
-});
-
-// Return embedded in tool response
-return { content: [resource] };
-```
-
-### Client Side (Legacy)
-
-```tsx
-import { UIResourceRenderer } from '@mcp-ui/client';
-
-function LegacyToolUI({ mcpResponse }) {
-  return (
-    <div>
-      {mcpResponse.content.map((item) => {
-        if (item.type === 'resource' && item.resource.uri?.startsWith('ui://')) {
-          return (
-            <UIResourceRenderer
-              key={item.resource.uri}
-              resource={item.resource}
-              onUIAction={(result) => {
-                console.log('Action:', result);
-                return { status: 'handled' };
-              }}
-            />
-          );
-        }
-        return null;
-      })}
-    </div>
-  );
-}
-```
-
-For more on supporting both MCP Apps and legacy hosts, see [Legacy MCP-UI Adapter](./mcp-apps).
 
 ## Building from Source
 
@@ -327,7 +272,5 @@ pnpm test
   - [Python SDK Usage & Examples](./server/python/usage-examples.md)
 - **Client SDK**: Learn how to render resources.
   - [Client Overview](./client/overview.md)
-  - [AppRenderer Component](./client/resource-renderer.md)
 - **Protocol & Components**:
   - [Protocol Details](./protocol-details.md)
-  - [Legacy MCP-UI Adapter](./mcp-apps.md)

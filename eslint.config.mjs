@@ -17,7 +17,6 @@ export default tseslint.config(
       '**/*.js',
       '**/*.mjs',
       '**/*.cjs',
-      'sdks/typescript/client/src/remote-dom/iframe-bundle.ts',
       'examples/**',
       'docs/**',
     ],

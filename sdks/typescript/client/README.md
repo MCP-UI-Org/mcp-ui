@@ -42,7 +42,7 @@
 `mcp-ui` is a playground for the open spec of UI over MCP. It offers a collection of community SDKs comprising:
 
 * **`@mcp-ui/server` (TypeScript)**: Utilities to generate UI resources (`UIResource`) on your MCP server.
-* **`@mcp-ui/client` (TypeScript)**: UI components (e.g., `<UIResourceRenderer />`) to render the UI resources and handle their events.
+* **`@mcp-ui/client` (TypeScript)**: UI components (e.g., `<AppRenderer />`) to render the UI resources and handle their events.
 * **`mcp_ui_server` (Ruby)**: Utilities to generate UI resources on your MCP server in a Ruby environment.
 * **`mcp-ui-server` (Python)**: Utilities to generate UI resources on your MCP server in a Python environment.
 
@@ -60,142 +60,37 @@ interface UIResource {
   type: 'resource';
   resource: {
     uri: string;       // e.g., ui://component/id
-    mimeType: 'text/html' | 'text/uri-list' | 'application/vnd.mcp-ui.remote-dom'; // text/html for HTML content, text/uri-list for URL content, application/vnd.mcp-ui.remote-dom for remote-dom content (Javascript)
-    text?: string;      // Inline HTML, external URL, or remote-dom script
-    blob?: string;      // Base64-encoded HTML, URL, or remote-dom script
+    mimeType: 'text/html;profile=mcp-app';
+    text?: string;      // HTML content
+    blob?: string;      // Base64-encoded HTML content
   };
 }
 ```
 
 * **`uri`**: Unique identifier for caching and routing
-  * `ui://…` — UI resources (rendering method determined by mimeType)
-* **`mimeType`**: `text/html` for HTML content (iframe srcDoc), `text/uri-list` for URL content (iframe src), `application/vnd.mcp-ui.remote-dom` for remote-dom content (Javascript)
-  * **MCP-UI requires a single URL**: While `text/uri-list` format supports multiple URLs, MCP-UI uses only the first valid `http/s` URL and warns if additional URLs are found
+  * `ui://…` — UI resources
+* **`mimeType`**: `text/html;profile=mcp-app` — the MCP Apps standard MIME type
 * **`text` vs. `blob`**: Choose `text` for simple strings; use `blob` for larger or encoded content.
 
-### Resource Renderer
+### AppRenderer
 
-The UI Resource is rendered in the `<UIResourceRenderer />` component. It automatically detects the resource type and renders the appropriate component.
+For MCP Apps hosts, use `AppRenderer` to render tool UIs:
 
-It is available as a React component and as a Web Component.
+```tsx
+import { AppRenderer } from '@mcp-ui/client';
 
-**React Component**
-
-It accepts the following props:
-- **`resource`**: The resource object from an MCP Tool response. It must include `uri`, `mimeType`, and content (`text`, `blob`)
-- **`onUIAction`**: Optional callback for handling UI actions from the resource:
-  ```typescript
-  { type: 'tool', payload: { toolName: string, params: Record<string, unknown> }, messageId?: string } |
-  { type: 'intent', payload: { intent: string, params: Record<string, unknown> }, messageId?: string } |
-  { type: 'prompt', payload: { prompt: string }, messageId?: string } |
-  { type: 'notify', payload: { message: string }, messageId?: string } |
-  { type: 'link', payload: { url: string }, messageId?: string }
-  ```
-  When actions include a `messageId`, the iframe automatically receives response messages for asynchronous handling.
-- **`supportedContentTypes`**: Optional array to restrict which content types are allowed (`['rawHtml', 'externalUrl', 'remoteDom']`)
-- **`htmlProps`**: Optional props for the internal `<HTMLResourceRenderer>`
-  - **`style`**: Optional custom styles for the iframe
-  - **`iframeProps`**: Optional props passed to the iframe element
-  - **`iframeRenderData`**: Optional `Record<string, unknown>` to pass data to the iframe upon rendering. This enables advanced use cases where the parent application needs to provide initial state or configuration to the sandboxed iframe content.
-  - **`autoResizeIframe`**: Optional `boolean | { width?: boolean; height?: boolean }` to automatically resize the iframe to the size of the content.
-- **`remoteDomProps`**: Optional props for the internal `<RemoteDOMResourceRenderer>`
-  - **`library`**: Optional component library for Remote DOM resources (defaults to `basicComponentLibrary`)
-  - **`remoteElements`**: remote element definitions for Remote DOM resources.
-
-**Web Component**
-
-The Web Component is available as `<ui-resource-renderer>`. It accepts the same props as the React component, but they must be passed as strings.
-
-Example:
-```html
-<ui-resource-renderer
-  resource='{ "mimeType": "text/html", "text": "<h2>Hello from the Web Component!</h2>" }'
-></ui-resource-renderer>
+function ToolUI({ client, toolName, toolInput, toolResult }) {
+  return (
+    <AppRenderer
+      client={client}
+      toolName={toolName}
+      sandbox={{ url: sandboxUrl }}
+      toolInput={toolInput}
+      toolResult={toolResult}
+    />
+  );
+}
 ```
-
-The `onUIAction` prop can be handled by attaching an event listener to the component:
-```javascript
-const renderer = document.querySelector('ui-resource-renderer');
-renderer.addEventListener('onUIAction', (event) => {
-  console.log('Action:', event.detail);
-});
-```
-
-The Web Component is available in the `@mcp-ui/client` package at `dist/ui-resource-renderer.wc.js`.
-
-### Supported Resource Types
-
-#### HTML (`text/html` and `text/uri-list`)
-
-Rendered using the internal `<HTMLResourceRenderer />` component, which displays content inside an `<iframe>`. This is suitable for self-contained HTML or embedding external apps.
-
-*   **`mimeType`**:
-    *   `text/html`: Renders inline HTML content.
-    *   `text/uri-list`: Renders an external URL. MCP-UI uses the first valid `http/s` URL.
-
-#### Remote DOM (`application/vnd.mcp-ui.remote-dom`)
-
-Rendered using the internal `<RemoteDOMResourceRenderer />` component, which utilizes Shopify's [`remote-dom`](https://github.com/Shopify/remote-dom). The server responds with a script that describes the UI and events. On the host, the script is securely rendered in a sandboxed iframe, and the UI changes are communicated to the host in JSON, where they're rendered using the host's component library. This is more flexible than iframes and allows for UIs that match the host's look-and-feel.
-
-* **`mimeType`**: `application/vnd.mcp-ui.remote-dom+javascript; framework={react | webcomponents}`
-
-### UI Action
-
-UI snippets must be able to interact with the agent. In `mcp-ui`, this is done by hooking into events sent from the UI snippet and reacting to them in the host (see `onUIAction` prop). For example, an HTML may trigger a tool call when a button is clicked by sending an event which will be caught handled by the client.
-
-
-### Platform Adapters
-
-MCP-UI SDKs includes adapter support for host-specific implementations, enabling your open MCP-UI widgets to work seamlessly regardless of host. Adapters automatically translate between MCP-UI's `postMessage` protocol and host-specific APIs. Over time, as hosts become compatible with the open spec, these adapters wouldn't be needed.
-
-#### Available Adapters
-
-##### Apps SDK Adapter
-
-For Apps SDK environments (e.g., ChatGPT), this adapter translates MCP-UI protocol to Apps SDK API calls (e.g., `window.openai`).
-
-**How it Works:**
-- Intercepts MCP-UI `postMessage` calls from your widgets
-- Translates them to appropriate Apps SDK API calls
-- Handles bidirectional communication (tools, prompts, state management)
-- Works transparently - your existing MCP-UI code continues to work without changes
-
-**Usage:**
-
-```ts
-import { createUIResource } from '@mcp-ui/server';
-
-const htmlResource = createUIResource({
-  uri: 'ui://greeting/1',
-  content: { 
-    type: 'rawHtml', 
-    htmlString: `
-      <button onclick="window.parent.postMessage({ type: 'tool', payload: { toolName: 'myTool', params: {} } }, '*')">
-        Call Tool
-      </button>
-    ` 
-  },
-  encoding: 'text',
-  // Enable adapters
-  adapters: {
-    appsSdk: {
-      enabled: true,
-      config: ...
-    }
-    // Future adapters can be enabled here
-  }
-});
-```
-
-The adapter scripts are automatically injected into your HTML content and handle all protocol translation.
-
-**Supported Actions:**
-- ✅ **Tool calls** - `{ type: 'tool', payload: { toolName, params } }`
-- ✅ **Prompts** - `{ type: 'prompt', payload: { prompt } }`
-- ✅ **Intents** - `{ type: 'intent', payload: { intent, params } }` (converted to prompts)
-- ✅ **Notifications** - `{ type: 'notify', payload: { message } }`
-- ✅ **Render data** - Access to `toolInput`, `toolOutput`, `widgetState`, `theme`, `locale`
-- ⚠️ **Links** - `{ type: 'link', payload: { url } }` (may not be supported, returns error in some environments)
 
 #### Advanced Usage
 

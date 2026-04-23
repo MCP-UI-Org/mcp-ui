@@ -13,6 +13,7 @@ from .core import (
     ui_action_result_tool_call,
 )
 from .types import (
+    RESOURCE_MIME_TYPE,
     URI,
     CreateUIResourceOptions,
     MimeType,
@@ -32,6 +33,7 @@ __version__ = "5.2.0"
 __all__ = [
     "URI",
     "MimeType",
+    "RESOURCE_MIME_TYPE",
     "ResourceContentPayload",
     "CreateUIResourceOptions",
     "UIActionType",

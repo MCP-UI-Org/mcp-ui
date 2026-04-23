@@ -83,11 +83,7 @@ export default withMermaid(
             {
               text: 'Client Examples',
               items: [
-                { text: 'React', link: '/guide/client/react-usage-examples' },
-                {
-                  text: 'Web Components',
-                  link: '/guide/client/wc-usage-examples',
-                },
+                { text: 'Overview', link: '/guide/client/overview' },
               ],
             },
           ],
@@ -190,29 +186,8 @@ export default withMermaid(
               { text: 'Overview', link: '/guide/client/overview' },
               { text: 'Walkthrough', link: '/guide/client/walkthrough' },
               {
-                text: 'UIResourceRenderer',
-                items: [
-                  {
-                    text: 'Overview',
-                    link: '/guide/client/resource-renderer',
-                  },
-                  {
-                    text: 'React Usage & Examples',
-                    link: '/guide/client/react-usage-examples',
-                  },
-                  {
-                    text: 'Web Component Usage & Examples',
-                    link: '/guide/client/wc-usage-examples',
-                  },
-                ],
-              },
-              {
-                text: 'Custom Component Libraries',
-                link: '/guide/client/custom-component-libraries',
-              },
-              {
-                text: 'Using a Proxy',
-                link: '/guide/client/using-a-proxy',
+                text: 'AppRenderer',
+                link: '/guide/client/app-renderer',
               },
             ],
           },

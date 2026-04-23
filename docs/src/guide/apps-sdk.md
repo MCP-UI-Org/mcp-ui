@@ -27,15 +27,9 @@ import { createUIResource } from '@mcp-ui/server';
 const server = new McpServer({ name: 'weather-bot', version: '1.0.0' });
 const TEMPLATE_URI = 'ui://widgets/weather';
 
-const appsSdkTemplate = createUIResource({
+const appsSdkTemplate = await createUIResource({
   uri: TEMPLATE_URI,
   encoding: 'text',
-  adapters: {
-    appsSdk: {
-      enabled: true,
-      config: { intentHandling: 'prompt' },
-    },
-  },
   content: {
     type: 'rawHtml',
     htmlString: renderForecastWidget(),
@@ -56,10 +50,9 @@ server.registerResource(TEMPLATE_URI, async () => appsSdkTemplate.resource);
 Apps SDK surfaces a handful of `_meta` keys on the resource itself (description, CSP, borders, etc.). Provide them via the `metadata` option when you build the template so ChatGPT can present the widget correctly. For example:
 
 ```ts
-const appsSdkTemplate = createUIResource({
+const appsSdkTemplate = await createUIResource({
   uri: TEMPLATE_URI,
   encoding: 'text',
-  adapters: { appsSdk: { enabled: true } },
   content: {
     type: 'rawHtml',
     htmlString: renderForecastWidget(),
@@ -142,7 +135,7 @@ server.registerTool(
     const forecast = await fetchForecast(city);
 
     // MCP-UI embedded UI resource
-    const uiResource = createUIResource({
+    const uiResource = await createUIResource({
         uri: `ui://widgets/weather/${city}`,
         encoding: 'text',
         content: {

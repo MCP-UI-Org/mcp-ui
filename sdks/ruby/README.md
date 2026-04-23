@@ -58,7 +58,7 @@ resource = McpUiServer.create_ui_resource(
 #   "type": "resource",
 #   "resource": {
 #     "uri": "ui://my-app/greeting",
-#     "mimeType": "text/html",
+#     "mimeType": "text/html;profile=mcp-app",
 #     "text": "<h1>Hello, World!</h1>"
 #   }
 # }
@@ -82,7 +82,7 @@ resource = McpUiServer.create_ui_resource(
 #   "type": "resource",
 #   "resource": {
 #     "uri": "ui://my-app/external-page",
-#     "mimeType": "text/uri-list",
+#     "mimeType": "text/html;profile=mcp-app",
 #     "text": "https://example.com"
 #   }
 # }
@@ -150,9 +150,10 @@ Common error scenarios:
 The SDK provides constants for MIME types and content types:
 
 ```ruby
-# MIME type constants
-McpUiServer::MIME_TYPE_HTML          # 'text/html'
-McpUiServer::MIME_TYPE_URI_LIST      # 'text/uri-list'
+# MIME type constant (MCP Apps standard; used for both HTML and URL content)
+McpUiServer::RESOURCE_MIME_TYPE     # 'text/html;profile=mcp-app'
+McpUiServer::MIME_TYPE_HTML          # alias for RESOURCE_MIME_TYPE
+McpUiServer::MIME_TYPE_URI_LIST      # alias for RESOURCE_MIME_TYPE
 McpUiServer::MIME_TYPE_REMOTE_DOM    # 'application/vnd.mcp-ui.remote-dom; framework=%s'
 
 # Content type constants (Ruby snake_case)

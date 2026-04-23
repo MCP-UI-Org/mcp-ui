@@ -5,7 +5,6 @@ export default defineConfig({
     globals: true, // Use global APIs (describe, it, expect)
     environment: 'jsdom', // Default environment, can be overridden per package/file
     setupFiles: './vitest.setup.ts',
-    globalSetup: './vitest.global-setup.ts',
     // include: ['sdks/typescript/*/src/**/__tests__/**/*.test.ts'],
     exclude: ['**/node_modules/**', '**/dist/**', '**/.pnpm-store/**'],
     coverage: {
