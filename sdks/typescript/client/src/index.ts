@@ -34,12 +34,4 @@ export {
 // Re-export MCP SDK types commonly used with AppRenderer
 export type { Implementation, JSONRPCRequest } from '@modelcontextprotocol/sdk/types.js';
 
-// The types needed to create a custom component library
-export type {
-  ComponentLibrary,
-  ComponentLibraryElement,
-  RemoteElementConfiguration,
-} from './types';
-
-
 export type { UIResourceMetadata } from './types';
