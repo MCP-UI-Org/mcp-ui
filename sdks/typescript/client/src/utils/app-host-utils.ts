@@ -8,10 +8,9 @@ import { type Tool } from '@modelcontextprotocol/sdk/types.js';
 const DEFAULT_SANDBOX_TIMEOUT_MS = 10000;
 
 /**
- * Mutable ref object that is populated synchronously inside the Promise constructor
- * of setupSandboxProxyIframe, before the first async yield. This allows callers to
- * cancel the pending timeout even if cleanup fires before the awaited result resolves
- * (e.g. React Strict Mode double-invocation).
+ * Assigned synchronously inside the onReady executor so callers can invoke
+ * `cancel()` while still awaiting `setupSandboxProxyIframe` or `onReady`.
+ * Cancelling clears timers and listeners and resolves `onReady`.
  */
 export interface SandboxCancelRef {
   cancel?: () => void;
@@ -47,15 +46,13 @@ export async function setupSandboxProxyIframe(
       }
     }, DEFAULT_SANDBOX_TIMEOUT_MS);
 
-    // Populated synchronously (before any async yield) so the cleanup function
-    // returned from useEffect can always call cancelRef.cancel() — even when React
-    // Strict Mode fires cleanup before the awaited setupSandboxProxyIframe resolves.
     if (cancelRef) {
       cancelRef.cancel = () => {
         if (!settled) {
           settled = true;
           clearTimeout(timeoutId);
           cleanup();
+          resolve();
         }
       };
     }
