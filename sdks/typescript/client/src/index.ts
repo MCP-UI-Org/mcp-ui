@@ -28,9 +28,10 @@ export {
   AppBridge,
   PostMessageTransport,
   type McpUiHostContext,
+  type McpUiHostCapabilities,
 } from '@modelcontextprotocol/ext-apps/app-bridge';
 
-// Re-export JSONRPCRequest for typing onFallbackRequest handlers
-export type { JSONRPCRequest } from '@modelcontextprotocol/sdk/types.js';
+// Re-export MCP SDK types commonly used with AppRenderer
+export type { Implementation, JSONRPCRequest } from '@modelcontextprotocol/sdk/types.js';
 
 export type { UIResourceMetadata } from './types';

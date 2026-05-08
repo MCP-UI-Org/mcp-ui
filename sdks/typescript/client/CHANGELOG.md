@@ -1,3 +1,10 @@
+# [7.1.0](https://github.com/MCP-UI-Org/mcp-ui/compare/client/v7.0.0...client/v7.1.0) (2026-05-01)
+
+
+### Features
+
+* add hostInfo and hostCapabilities props to AppRenderer ([#179](https://github.com/MCP-UI-Org/mcp-ui/issues/179)) ([87e2436](https://github.com/MCP-UI-Org/mcp-ui/commit/87e2436d8bfb8e8628681177f73c15169e456075))
+
 # [7.0.0](https://github.com/MCP-UI-Org/mcp-ui/compare/client/v6.1.1...client/v7.0.0) (2026-03-12)
 
 
