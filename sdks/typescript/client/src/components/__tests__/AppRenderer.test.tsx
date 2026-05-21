@@ -37,6 +37,7 @@ vi.mock('../../utils/app-host-utils', () => ({
 
 // Store mock bridge instance for test access
 let mockBridgeInstance: Partial<AppBridge> | null = null;
+let mockSetHostContextImpl: (() => void) | undefined;
 
 // Mock AppBridge constructor
 vi.mock('@modelcontextprotocol/ext-apps/app-bridge', () => {
@@ -52,7 +53,7 @@ vi.mock('@modelcontextprotocol/ext-apps/app-bridge', () => {
         onreadresource: undefined,
         onlistprompts: undefined,
         fallbackRequestHandler: undefined,
-        setHostContext: vi.fn(),
+        setHostContext: vi.fn(() => mockSetHostContextImpl?.()),
         sendToolInputPartial: vi.fn(),
         sendToolCancelled: vi.fn(),
         sendToolListChanged: vi.fn(),
@@ -94,6 +95,7 @@ describe('<AppRenderer />', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mockBridgeInstance = null;
+    mockSetHostContextImpl = undefined;
     mockAppFrame.mockClear();
 
     // Default mock implementations
@@ -253,6 +255,26 @@ describe('<AppRenderer />', () => {
   });
 
   describe('hostContext prop', () => {
+    it('should seed AppBridge with hostContext when provided', async () => {
+      const AppBridgeMock = vi.mocked(
+        (await import('@modelcontextprotocol/ext-apps/app-bridge')).AppBridge,
+      );
+      const hostContext = { theme: 'dark' as const };
+
+      render(<AppRenderer {...defaultProps} hostContext={hostContext} />);
+
+      await waitFor(() => {
+        expect(screen.getByTestId('app-frame')).toBeInTheDocument();
+      });
+
+      expect(AppBridgeMock).toHaveBeenCalledWith(
+        mockClient,
+        expect.any(Object),
+        expect.any(Object),
+        { hostContext },
+      );
+    });
+
     it('should call setHostContext when hostContext is provided', async () => {
       const hostContext = { theme: 'dark' as const };
 
@@ -277,6 +299,28 @@ describe('<AppRenderer />', () => {
       await waitFor(() => {
         expect(mockBridgeInstance?.setHostContext).toHaveBeenCalledWith({ theme: 'dark' });
       });
+    });
+
+    it('should ignore not-connected errors while syncing hostContext', async () => {
+      const onError = vi.fn();
+      mockSetHostContextImpl = () => {
+        throw new Error('Not connected');
+      };
+
+      render(
+        <AppRenderer
+          {...defaultProps}
+          hostContext={{ theme: 'dark' as const }}
+          onError={onError}
+        />,
+      );
+
+      await waitFor(() => {
+        expect(mockBridgeInstance?.setHostContext).toHaveBeenCalledWith({ theme: 'dark' });
+      });
+
+      expect(onError).not.toHaveBeenCalled();
+      expect(screen.queryByText(/Error:/)).not.toBeInTheDocument();
     });
   });
 

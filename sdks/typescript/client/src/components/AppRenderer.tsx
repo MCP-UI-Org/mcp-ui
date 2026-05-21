@@ -308,6 +308,7 @@ export const AppRenderer = forwardRef<AppRendererHandle, AppRendererProps>((prop
   const onReadResourceRef = useRef(onReadResource);
   const onListPromptsRef = useRef(onListPrompts);
   const onFallbackRequestRef = useRef(onFallbackRequest);
+  const hostContextRef = useRef(hostContext);
 
   useEffect(() => {
     onMessageRef.current = onMessage;
@@ -321,6 +322,7 @@ export const AppRenderer = forwardRef<AppRendererHandle, AppRendererProps>((prop
     onReadResourceRef.current = onReadResource;
     onListPromptsRef.current = onListPrompts;
     onFallbackRequestRef.current = onFallbackRequest;
+    hostContextRef.current = hostContext;
   });
 
   // Expose send methods via ref for Host → Guest notifications
@@ -357,11 +359,12 @@ export const AppRenderer = forwardRef<AppRendererHandle, AppRendererProps>((prop
           serverResources: serverCapabilities?.resources,
         };
 
-        const bridge = new AppBridge(
-          client ?? null,
-          finalHostInfo,
-          finalHostCapabilities,
-        );
+        const initialHostContext = hostContextRef.current;
+        const bridge = initialHostContext
+          ? new AppBridge(client ?? null, finalHostInfo, finalHostCapabilities, {
+              hostContext: initialHostContext,
+            })
+          : new AppBridge(client ?? null, finalHostInfo, finalHostCapabilities);
 
         currentBridge = bridge;
 
@@ -541,7 +544,14 @@ export const AppRenderer = forwardRef<AppRendererHandle, AppRendererProps>((prop
   // Effect 3: Sync host context when it changes
   useEffect(() => {
     if (appBridge && hostContext) {
-      appBridge.setHostContext(hostContext);
+      try {
+        appBridge.setHostContext(hostContext);
+      } catch (err) {
+        const error = err instanceof Error ? err : new Error(String(err));
+        if (error.message.includes('Not connected')) return;
+        setError(error);
+        onErrorRef.current?.(error);
+      }
     }
   }, [appBridge, hostContext]);
 
