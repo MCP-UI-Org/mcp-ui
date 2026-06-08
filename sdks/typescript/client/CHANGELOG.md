@@ -1,3 +1,10 @@
+## [7.1.1](https://github.com/MCP-UI-Org/mcp-ui/compare/client/v7.1.0...client/v7.1.1) (2026-05-09)
+
+
+### Bug Fixes
+
+* cancel sandbox proxy iframe timeout on effect cleanup to prevent StrictMode unhandled rejection ([#190](https://github.com/MCP-UI-Org/mcp-ui/issues/190)) ([ce5893e](https://github.com/MCP-UI-Org/mcp-ui/commit/ce5893e6456be41e63d444f548b175d23772c4f0))
+
 # [7.1.0](https://github.com/MCP-UI-Org/mcp-ui/compare/client/v7.0.0...client/v7.1.0) (2026-05-01)
 
 
