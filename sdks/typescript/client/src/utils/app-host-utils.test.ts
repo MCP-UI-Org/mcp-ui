@@ -62,4 +62,20 @@ describe('setupSandboxProxyIframe', () => {
 
     await expect(onReady).resolves.toBeUndefined();
   });
+
+  it('sets the default sandbox permissions', async () => {
+    const { iframe } = await setupSandboxProxyIframe(new URL('https://example.com/proxy'));
+
+    expect(iframe.getAttribute('sandbox')).toBe('allow-scripts allow-same-origin allow-forms');
+  });
+
+  it('sets custom sandbox permissions', async () => {
+    const { iframe } = await setupSandboxProxyIframe(
+      new URL('https://example.com/proxy'),
+      undefined,
+      'allow-scripts allow-forms',
+    );
+
+    expect(iframe.getAttribute('sandbox')).toBe('allow-scripts allow-forms');
+  });
 });

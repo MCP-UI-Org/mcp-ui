@@ -125,6 +125,8 @@ export const AppFrame = (props: AppFrameProps) => {
   const iframeRef = useRef<HTMLIFrameElement | null>(null);
   // Track the current sandbox URL to detect when it changes
   const currentSandboxUrlRef = useRef<string | null>(null);
+  // Track the current sandbox permissions to detect when they change
+  const currentSandboxPermissionsRef = useRef<string | undefined>(undefined);
   // Track the current appBridge to detect when it changes (for isolation)
   const currentAppBridgeRef = useRef<AppBridge | null>(null);
 
@@ -152,6 +154,7 @@ export const AppFrame = (props: AppFrameProps) => {
     // but ensures isolation when switching to a different app/resource (different appBridge)
     if (
       currentSandboxUrlRef.current === sandboxUrlString &&
+      currentSandboxPermissionsRef.current === sandbox.permissions &&
       currentAppBridgeRef.current === appBridge &&
       iframeRef.current
     ) {
@@ -178,15 +181,21 @@ export const AppFrame = (props: AppFrameProps) => {
           containerRef.current.removeChild(iframeRef.current);
           iframeRef.current = null;
           currentSandboxUrlRef.current = null;
+          currentSandboxPermissionsRef.current = undefined;
           currentAppBridgeRef.current = null;
         }
 
-        const { iframe, onReady } = await setupSandboxProxyIframe(sandboxUrl, cancelRef);
+        const { iframe, onReady } = await setupSandboxProxyIframe(
+          sandboxUrl,
+          cancelRef,
+          sandbox.permissions,
+        );
 
         if (!mounted) return;
 
         iframeRef.current = iframe;
         currentSandboxUrlRef.current = sandboxUrlString;
+        currentSandboxPermissionsRef.current = sandbox.permissions;
         currentAppBridgeRef.current = appBridge;
         if (containerRef.current) {
           containerRef.current.appendChild(iframe);
@@ -244,7 +253,7 @@ export const AppFrame = (props: AppFrameProps) => {
       mounted = false;
       cancelRef.cancel?.();
     };
-  }, [sandbox.url, sandbox.csp, appBridge]);
+  }, [sandbox.url, sandbox.csp, sandbox.permissions, appBridge]);
 
   // Effect 2: Send HTML to sandbox when bridge is connected
   useEffect(() => {

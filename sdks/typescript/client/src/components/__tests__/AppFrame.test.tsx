@@ -122,6 +122,27 @@ describe('<AppFrame />', () => {
       expect(appHostUtils.setupSandboxProxyIframe).toHaveBeenCalledWith(
         defaultProps.sandbox.url,
         expect.any(Object),
+        undefined,
+      );
+    });
+  });
+
+  it('should call setupSandboxProxyIframe with sandbox permissions', async () => {
+    const permissions = 'allow-scripts allow-forms';
+
+    render(
+      <AppFrame
+        {...getPropsWithBridge({
+          sandbox: { ...defaultProps.sandbox, permissions },
+        })}
+      />,
+    );
+
+    await waitFor(() => {
+      expect(appHostUtils.setupSandboxProxyIframe).toHaveBeenCalledWith(
+        defaultProps.sandbox.url,
+        expect.any(Object),
+        permissions,
       );
     });
   });
@@ -368,6 +389,47 @@ describe('<AppFrame />', () => {
         expect(appHostUtils.setupSandboxProxyIframe).toHaveBeenLastCalledWith(
           newSandboxUrl,
           expect.any(Object),
+          undefined,
+        );
+      });
+    });
+
+    it('should recreate iframe when sandbox permissions change', async () => {
+      const { rerender } = render(<AppFrame {...getPropsWithBridge()} />);
+
+      await act(() => {
+        onReadyResolve();
+      });
+
+      await act(() => {
+        registeredOninitialized?.();
+      });
+
+      expect(appHostUtils.setupSandboxProxyIframe).toHaveBeenCalledTimes(1);
+
+      const secondOnReadyPromise = new Promise<void>((resolve) => {
+        onReadyResolve = resolve;
+      });
+      vi.mocked(appHostUtils.setupSandboxProxyIframe).mockResolvedValue({
+        iframe: mockIframe as HTMLIFrameElement,
+        onReady: secondOnReadyPromise,
+      });
+
+      const permissions = 'allow-scripts allow-forms';
+      rerender(
+        <AppFrame
+          {...getPropsWithBridge({
+            sandbox: { ...defaultProps.sandbox, permissions },
+          })}
+        />,
+      );
+
+      await waitFor(() => {
+        expect(appHostUtils.setupSandboxProxyIframe).toHaveBeenCalledTimes(2);
+        expect(appHostUtils.setupSandboxProxyIframe).toHaveBeenLastCalledWith(
+          defaultProps.sandbox.url,
+          expect.any(Object),
+          permissions,
         );
       });
     });

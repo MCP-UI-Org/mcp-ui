@@ -75,7 +75,7 @@ MCP Apps renders tool UIs in sandboxed iframes for security. You need a sandbox 
 ```
 
 ::: tip Production Setup
-For production, consider implementing Content Security Policy (CSP) headers and additional security measures. See [@modelcontextprotocol/ext-apps](https://github.com/modelcontextprotocol/ext-apps) for more details on secure sandbox proxy implementation.
+For production, consider implementing Content Security Policy (CSP) headers and additional security measures. If the sandbox proxy is served from the same origin as your host app, avoid combining `allow-scripts` with `allow-same-origin` for untrusted MCP app HTML; use `sandbox.permissions` to override the iframe sandbox attribute or serve the proxy from a dedicated, cookieless sandbox origin. See [@modelcontextprotocol/ext-apps](https://github.com/modelcontextprotocol/ext-apps) for more details on secure sandbox proxy implementation.
 :::
 
 ## 4. Create an MCP Client
