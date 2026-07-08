@@ -17,6 +17,13 @@ describe('UI Extension Capabilities', () => {
     expect(UI_EXTENSION_CONFIG.mimeTypes).toEqual(['text/html;profile=mcp-app']);
   });
 
+  it('should advertise a2ui contentMimeTypes (Dynamic View Content)', () => {
+    expect(UI_EXTENSION_CONFIG.contentMimeTypes).toEqual([
+      'application/a2ui+json',
+      'application/json+a2ui',
+    ]);
+  });
+
   it('should structure capabilities with extension name as key', () => {
     expect(UI_EXTENSION_CAPABILITIES[UI_EXTENSION_NAME]).toEqual(UI_EXTENSION_CONFIG);
   });

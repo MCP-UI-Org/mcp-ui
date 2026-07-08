@@ -9,6 +9,18 @@ export {
   UI_EXTENSION_CAPABILITIES,
 } from './capabilities';
 
+// A2UI content detection (the bundled generic renderer itself is exposed
+// via the '@mcp-ui/client/a2ui-renderer' subpath export)
+export {
+  A2UI_MIME_TYPE,
+  A2UI_LEGACY_MIME_TYPE,
+  A2UI_MIME_TYPES,
+  isViewContentBlock,
+  isA2uiContentBlock,
+  getA2uiContentBlocks,
+  hasA2uiContent,
+} from './a2ui/detection';
+
 // MCP Apps renderers
 export {
   AppRenderer,

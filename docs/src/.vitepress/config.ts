@@ -189,6 +189,10 @@ export default withMermaid(
                 text: 'AppRenderer',
                 link: '/guide/client/app-renderer',
               },
+              {
+                text: 'A2UI Support',
+                link: '/guide/client/a2ui',
+              },
             ],
           },
         ],
