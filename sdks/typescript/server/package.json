@@ -3,6 +3,11 @@
   "version": "6.1.0",
   "private": false,
   "description": "mcp-ui Server SDK",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/MCP-UI-Org/mcp-ui.git",
+    "directory": "sdks/typescript/server"
+  },
   "type": "module",
   "main": "./dist/index.cjs",
   "module": "./dist/index.mjs",

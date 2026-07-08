@@ -1,6 +1,11 @@
 {
   "name": "@mcp-ui/shared",
   "version": "0.1.0",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/MCP-UI-Org/mcp-ui.git",
+    "directory": "sdks/typescript/shared"
+  },
   "type": "module",
   "main": "./dist/index.js",
   "module": "./dist/index.mjs",
