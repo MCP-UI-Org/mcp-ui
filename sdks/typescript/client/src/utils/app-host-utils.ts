@@ -6,6 +6,7 @@ import {
 import { type Client } from '@modelcontextprotocol/sdk/client/index.js';
 import { type Tool } from '@modelcontextprotocol/sdk/types.js';
 const DEFAULT_SANDBOX_TIMEOUT_MS = 10000;
+const DEFAULT_SANDBOX_PERMISSIONS = 'allow-scripts allow-same-origin allow-forms';
 
 /**
  * Assigned synchronously inside the onReady executor so callers can invoke
@@ -19,6 +20,7 @@ export interface SandboxCancelRef {
 export async function setupSandboxProxyIframe(
   sandboxProxyUrl: URL,
   cancelRef?: SandboxCancelRef,
+  sandboxPermissions = DEFAULT_SANDBOX_PERMISSIONS,
 ): Promise<{
   iframe: HTMLIFrameElement;
   onReady: Promise<void>;
@@ -28,7 +30,7 @@ export async function setupSandboxProxyIframe(
   iframe.style.height = '600px';
   iframe.style.border = 'none';
   iframe.style.backgroundColor = 'transparent';
-  iframe.setAttribute('sandbox', 'allow-scripts allow-same-origin allow-forms');
+  iframe.setAttribute('sandbox', sandboxPermissions);
 
   const onReady = new Promise<void>((resolve, reject) => {
     let settled = false;

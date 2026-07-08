@@ -43,7 +43,7 @@ function ToolUI({ client, toolName, toolInput, toolResult }) {
 |------|------|-------------|
 | `client` | `Client` | Optional MCP client for automatic resource fetching and MCP request forwarding. Omit to use custom handlers instead. |
 | `toolName` | `string` | Name of the MCP tool to render UI for. |
-| `sandbox` | `SandboxConfig` | Sandbox configuration with the proxy URL and optional CSP. |
+| `sandbox` | `SandboxConfig` | Sandbox configuration with the proxy URL, optional iframe permissions, and optional CSP. |
 | `html` | `string` | Optional pre-fetched HTML. If provided, skips all resource fetching. |
 | `toolResourceUri` | `string` | Optional pre-fetched resource URI. If not provided, fetched via the client. |
 | `toolInput` | `Record<string, unknown>` | Tool arguments to pass to the guest UI once it initializes. |
@@ -74,6 +74,29 @@ These override the automatic forwarding to the MCP client when provided:
 | `onListResourceTemplates` | `(params, extra) => Promise<ListResourceTemplatesResult>` | Handler for `resources/templates/list` requests. |
 | `onReadResource` | `(params, extra) => Promise<ReadResourceResult>` | Handler for `resources/read` requests. |
 | `onListPrompts` | `(params, extra) => Promise<ListPromptsResult>` | Handler for `prompts/list` requests. |
+
+### Sandbox Configuration
+
+`sandbox.url` points to the sandbox proxy HTML page that receives MCP app HTML and renders it in an iframe. By default, the iframe sandbox attribute is:
+
+```html
+sandbox="allow-scripts allow-same-origin allow-forms"
+```
+
+Use `sandbox.permissions` to override that attribute when your host needs stricter isolation:
+
+```tsx
+<AppRenderer
+  client={client}
+  toolName="my-tool"
+  sandbox={{
+    url: sandboxUrl,
+    permissions: 'allow-scripts allow-forms',
+  }}
+/>
+```
+
+Changing `sandbox.permissions` recreates the iframe so the new browser sandbox policy is applied. If your sandbox proxy is served from the same origin as your host app, avoid combining `allow-scripts` with `allow-same-origin` for untrusted MCP app HTML; `postMessage` does not require same-origin access. A dedicated, cookieless sandbox origin is recommended for production hosts.
 
 ### Ref Methods
 
