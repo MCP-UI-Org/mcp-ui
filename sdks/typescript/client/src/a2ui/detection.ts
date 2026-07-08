@@ -1,4 +1,9 @@
 import type { CallToolResult, EmbeddedResource } from '@modelcontextprotocol/sdk/types.js';
+import {
+  getViewContentBlocks,
+  type FallbackContentRenderers,
+  type GetViewContentBlocksOptions,
+} from '../view-content';
 
 /** MIME type of A2UI payloads (https://a2ui.org). */
 export const A2UI_MIME_TYPE = 'application/a2ui+json';
@@ -9,39 +14,12 @@ export const A2UI_LEGACY_MIME_TYPE = 'application/json+a2ui';
 /** All MIME types recognized as A2UI payloads. */
 export const A2UI_MIME_TYPES: readonly string[] = [A2UI_MIME_TYPE, A2UI_LEGACY_MIME_TYPE];
 
-// TODO: Replace these local helpers with the official ext-apps SDK helpers
-// (isViewContentBlock, getViewContentBlocks, supportsContentMimeType) once
-// https://github.com/modelcontextprotocol/ext-apps/pull/700 ships in a
-// release. Semantics here intentionally match that proposal, plus legacy
-// support for unmarked blocks (existing A2UI servers don't set
-// _meta.ui.content).
-
-interface ContentBlockLike {
-  type?: unknown;
-  resource?: { mimeType?: unknown; text?: unknown; blob?: unknown };
-  _meta?: { ui?: { content?: unknown } };
-}
-
-function isEmbeddedResourceBlock(block: unknown): block is ContentBlockLike {
-  return (
-    typeof block === 'object' &&
-    block !== null &&
-    (block as ContentBlockLike).type === 'resource' &&
-    typeof (block as ContentBlockLike).resource === 'object' &&
-    (block as ContentBlockLike).resource !== null
-  );
-}
-
-/**
- * True when a content block is an embedded resource marked as view content
- * per the "Dynamic View Content" spec proposal (ext-apps PR #699), i.e. it
- * carries `_meta.ui.content`.
- */
-export function isViewContentBlock(block: unknown): block is EmbeddedResource {
-  if (!isEmbeddedResourceBlock(block)) return false;
-  const content = block._meta?.ui?.content;
-  return typeof content === 'object' && content !== null;
-}
+// A2UI blocks count as view content whether marked with _meta.ui.content
+// (spec PR #699) or unmarked (existing A2UI servers don't set the marker).
+const A2UI_VIEW_CONTENT_OPTIONS: GetViewContentBlocksOptions = {
+  mimeTypes: A2UI_MIME_TYPES,
+  unmarkedMimeTypes: A2UI_MIME_TYPES,
+};
 
 /**
  * True when a content block is an embedded resource holding an A2UI payload:
@@ -51,11 +29,11 @@ export function isViewContentBlock(block: unknown): block is EmbeddedResource {
  * unmarked blocks (existing A2UI servers).
  */
 export function isA2uiContentBlock(block: unknown): block is EmbeddedResource {
-  if (!isEmbeddedResourceBlock(block)) return false;
-  const resource = block.resource!;
   return (
-    A2UI_MIME_TYPES.includes(resource.mimeType as string) &&
-    (typeof resource.text === 'string' || typeof resource.blob === 'string')
+    getViewContentBlocks(
+      { content: [block] } as unknown as Pick<CallToolResult, 'content'>,
+      A2UI_VIEW_CONTENT_OPTIONS,
+    ).length > 0
   );
 }
 
@@ -66,17 +44,48 @@ export function isA2uiContentBlock(block: unknown): block is EmbeddedResource {
 export function getA2uiContentBlocks(
   result?: Pick<CallToolResult, 'content'>,
 ): EmbeddedResource[] {
-  const content = result?.content;
-  if (!Array.isArray(content)) return [];
-  return content.filter(isA2uiContentBlock);
+  return getViewContentBlocks(result, A2UI_VIEW_CONTENT_OPTIONS);
 }
 
 /**
  * True when a tool result contains at least one A2UI embedded resource.
- * AppRenderer uses this (in the default `a2uiRenderer: 'auto'` mode) to
- * decide whether to inject the bundled generic A2UI renderer for tools
- * that declare no UI resource of their own.
  */
 export function hasA2uiContent(result?: Pick<CallToolResult, 'content'>): boolean {
   return getA2uiContentBlocks(result).length > 0;
 }
+
+// Loads the bundled generic A2UI renderer behind the lazy
+// '@mcp-ui/client/a2ui-renderer' subpath, keeping the ~600 KB artifact out
+// of the main bundle.
+async function loadBundledA2uiRendererHtml(): Promise<string> {
+  try {
+    const rendererModule = await import('@mcp-ui/client/a2ui-renderer');
+    return rendererModule.A2UI_RENDERER_HTML;
+  } catch (err) {
+    throw new Error(
+      "Failed to load the bundled A2UI renderer ('@mcp-ui/client/a2ui-renderer'). " +
+        'If your bundler cannot resolve this subpath (e.g. UMD builds), import ' +
+        "A2UI_RENDERER_HTML from '@mcp-ui/client/a2ui-renderer' statically and pass it " +
+        'as a string entry in the fallbackContentRenderers prop.',
+      { cause: err },
+    );
+  }
+}
+
+/**
+ * The fallback content renderers AppRenderer uses when its
+ * `fallbackContentRenderers` prop is omitted: the bundled generic A2UI
+ * renderer for both A2UI MIME types, lazily loaded. Spread this to extend
+ * the defaults rather than replace them:
+ *
+ * ```ts
+ * fallbackContentRenderers={{
+ *   ...DEFAULT_FALLBACK_CONTENT_RENDERERS,
+ *   'application/vnd.foo+json': loadFooRendererHtml,
+ * }}
+ * ```
+ */
+export const DEFAULT_FALLBACK_CONTENT_RENDERERS: FallbackContentRenderers = {
+  [A2UI_MIME_TYPE]: loadBundledA2uiRendererHtml,
+  [A2UI_LEGACY_MIME_TYPE]: loadBundledA2uiRendererHtml,
+};

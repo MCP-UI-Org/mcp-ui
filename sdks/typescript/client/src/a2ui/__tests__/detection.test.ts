@@ -3,10 +3,10 @@ import type { CallToolResult } from '@modelcontextprotocol/sdk/types.js';
 import {
   A2UI_LEGACY_MIME_TYPE,
   A2UI_MIME_TYPE,
+  DEFAULT_FALLBACK_CONTENT_RENDERERS,
   getA2uiContentBlocks,
   hasA2uiContent,
   isA2uiContentBlock,
-  isViewContentBlock,
 } from '../detection';
 
 const a2uiText = JSON.stringify([{ version: 'v0.9', createSurface: { surfaceId: 'main' } }]);
@@ -27,23 +27,6 @@ function a2uiBlock(overrides: Record<string, unknown> = {}, meta?: Record<string
 function result(...content: unknown[]): CallToolResult {
   return { content } as CallToolResult;
 }
-
-describe('isViewContentBlock', () => {
-  it('accepts embedded resources marked with _meta.ui.content', () => {
-    expect(isViewContentBlock(a2uiBlock({}, { ui: { content: {} } }))).toBe(true);
-    expect(isViewContentBlock(a2uiBlock({}, { ui: { content: { rendererUri: 'ui://x' } } }))).toBe(
-      true,
-    );
-  });
-
-  it('rejects unmarked blocks and non-resources', () => {
-    expect(isViewContentBlock(a2uiBlock())).toBe(false);
-    expect(isViewContentBlock({ type: 'text', text: 'hi', _meta: { ui: { content: {} } } })).toBe(
-      false,
-    );
-    expect(isViewContentBlock(undefined)).toBe(false);
-  });
-});
 
 describe('isA2uiContentBlock', () => {
   it('accepts marked blocks (spec PR #699)', () => {
@@ -101,5 +84,17 @@ describe('hasA2uiContent', () => {
     expect(hasA2uiContent(result({ type: 'text', text: 'x' }))).toBe(false);
     expect(hasA2uiContent(result())).toBe(false);
     expect(hasA2uiContent(undefined)).toBe(false);
+  });
+});
+
+describe('DEFAULT_FALLBACK_CONTENT_RENDERERS', () => {
+  it('maps both a2ui MIME types to lazy loaders (not inline HTML strings)', () => {
+    expect(Object.keys(DEFAULT_FALLBACK_CONTENT_RENDERERS)).toEqual([
+      A2UI_MIME_TYPE,
+      A2UI_LEGACY_MIME_TYPE,
+    ]);
+    for (const entry of Object.values(DEFAULT_FALLBACK_CONTENT_RENDERERS)) {
+      expect(typeof entry).toBe('function');
+    }
   });
 });
