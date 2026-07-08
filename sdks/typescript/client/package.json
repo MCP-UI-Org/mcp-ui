@@ -12,6 +12,11 @@
       "types": "./dist/src/index.d.ts",
       "import": "./dist/index.mjs",
       "require": "./dist/index.js"
+    },
+    "./a2ui-renderer": {
+      "types": "./dist/a2ui-renderer.d.ts",
+      "import": "./dist/a2ui-renderer.mjs",
+      "require": "./dist/a2ui-renderer.js"
     }
   },
   "files": [
@@ -44,8 +49,9 @@
   },
   "scripts": {
     "prepublishOnly": "pnpm run build",
-    "build": "pnpm run clean && tsc && vite build",
+    "build": "pnpm run clean && tsc && vite build && node scripts/emit-a2ui-renderer.mjs",
     "clean": "rimraf dist",
+    "regen:a2ui-renderer": "pnpm --filter @mcp-ui/client-a2ui-renderer build && node scripts/emit-a2ui-renderer.mjs --regenerate",
     "dev": "vite",
     "test": "vitest run",
     "test:watch": "vitest watch",
