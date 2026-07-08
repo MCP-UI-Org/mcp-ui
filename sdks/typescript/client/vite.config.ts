@@ -17,9 +17,12 @@ export default defineConfig({
     lib: {
       entry: path.resolve(__dirname, 'src/index.ts'),
       name: 'McpUiClient',
-      formats: ['es', 'umd'],
+      // cjs for Node require() compatibility ("type": "module" makes .js files
+      // ESM, so the UMD bundle at index.js is not requirable); umd kept for
+      // script-tag/CDN consumers
+      formats: ['es', 'cjs', 'umd'],
       fileName: (format) =>
-        `index.${format === 'es' ? 'mjs' : format === 'umd' ? 'js' : format + '.js'}`,
+        `index.${format === 'es' ? 'mjs' : format === 'cjs' ? 'cjs' : 'js'}`,
     },
     rollupOptions: {
       external: [
