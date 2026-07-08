@@ -4,19 +4,19 @@
   "description": "mcp-ui Client SDK",
   "private": false,
   "type": "module",
-  "main": "./dist/index.js",
+  "main": "./dist/index.cjs",
   "module": "./dist/index.mjs",
   "types": "./dist/src/index.d.ts",
   "exports": {
     ".": {
       "types": "./dist/src/index.d.ts",
       "import": "./dist/index.mjs",
-      "require": "./dist/index.js"
+      "require": "./dist/index.cjs"
     },
     "./a2ui-renderer": {
       "types": "./dist/a2ui-renderer.d.ts",
       "import": "./dist/a2ui-renderer.mjs",
-      "require": "./dist/a2ui-renderer.js"
+      "require": "./dist/a2ui-renderer.cjs"
     }
   },
   "files": [

@@ -3,7 +3,7 @@
  *
  * Default mode (runs as part of `pnpm build` after vite):
  *   Reads the checked-in single-file HTML artifact at
- *   src/a2ui/a2ui-renderer.html and writes dist/a2ui-renderer.{mjs,js,d.ts},
+ *   src/a2ui/a2ui-renderer.html and writes dist/a2ui-renderer.{mjs,cjs,d.ts},
  *   each exporting `A2UI_RENDERER_HTML: string`. These back the
  *   `@mcp-ui/client/a2ui-renderer` subpath export.
  *
@@ -47,11 +47,11 @@ const encoded = JSON.stringify(html);
 mkdirSync(distDir, { recursive: true });
 writeFileSync(join(distDir, 'a2ui-renderer.mjs'), `export const A2UI_RENDERER_HTML = ${encoded};\n`);
 writeFileSync(
-  join(distDir, 'a2ui-renderer.js'),
+  join(distDir, 'a2ui-renderer.cjs'),
   `'use strict';\nObject.defineProperty(exports, '__esModule', { value: true });\nexports.A2UI_RENDERER_HTML = ${encoded};\n`,
 );
 writeFileSync(
   join(distDir, 'a2ui-renderer.d.ts'),
   '/** Self-contained HTML of the bundled generic A2UI renderer. */\nexport declare const A2UI_RENDERER_HTML: string;\n',
 );
-console.log(`Emitted a2ui-renderer.{mjs,js,d.ts} to ${distDir} (${(html.length / 1024).toFixed(0)} KB HTML)`);
+console.log(`Emitted a2ui-renderer.{mjs,cjs,d.ts} to ${distDir} (${(html.length / 1024).toFixed(0)} KB HTML)`);
