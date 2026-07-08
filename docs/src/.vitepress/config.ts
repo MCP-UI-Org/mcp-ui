@@ -190,7 +190,7 @@ export default withMermaid(
                 link: '/guide/client/app-renderer',
               },
               {
-                text: 'A2UI Support',
+                text: 'Dynamic View Content (A2UI)',
                 link: '/guide/client/a2ui',
               },
             ],

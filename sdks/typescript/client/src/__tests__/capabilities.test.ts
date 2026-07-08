@@ -6,6 +6,7 @@ import {
   UI_EXTENSION_CAPABILITIES,
 } from '../capabilities';
 import { RESOURCE_MIME_TYPE } from '@modelcontextprotocol/ext-apps/app-bridge';
+import { DEFAULT_FALLBACK_CONTENT_RENDERERS } from '../a2ui/detection';
 
 describe('UI Extension Capabilities', () => {
   it('should have correct extension name', () => {
@@ -22,6 +23,12 @@ describe('UI Extension Capabilities', () => {
       'application/a2ui+json',
       'application/json+a2ui',
     ]);
+  });
+
+  it('should advertise exactly the default fallback registry keys (no drift)', () => {
+    expect([...UI_EXTENSION_CONFIG.contentMimeTypes]).toEqual(
+      Object.keys(DEFAULT_FALLBACK_CONTENT_RENDERERS),
+    );
   });
 
   it('should structure capabilities with extension name as key', () => {

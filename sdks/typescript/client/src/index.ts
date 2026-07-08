@@ -9,11 +9,20 @@ export {
   UI_EXTENSION_CAPABILITIES,
 } from './capabilities';
 
-// Generic Dynamic View Content detection (ext-apps PR #699)
-export { isViewContentBlock } from './view-content';
+// Dynamic View Content (ext-apps PR #699): generic detection helpers and
+// the fallback content-renderer registry types
+export {
+  isViewContentBlock,
+  getViewContentBlocks,
+  getViewContentRendererUri,
+  type FallbackContentRenderer,
+  type FallbackContentRenderers,
+  type GetViewContentBlocksOptions,
+} from './view-content';
 
-// A2UI content detection (the bundled generic renderer itself is exposed
-// via the '@mcp-ui/client/a2ui-renderer' subpath export)
+// A2UI layer: MIME constants, a2ui-specific detection, and the default
+// fallback registry (the bundled generic renderer itself is exposed via the
+// '@mcp-ui/client/a2ui-renderer' subpath export)
 export {
   A2UI_MIME_TYPE,
   A2UI_LEGACY_MIME_TYPE,
@@ -21,6 +30,7 @@ export {
   isA2uiContentBlock,
   getA2uiContentBlocks,
   hasA2uiContent,
+  DEFAULT_FALLBACK_CONTENT_RENDERERS,
 } from './a2ui/detection';
 
 // MCP Apps renderers
