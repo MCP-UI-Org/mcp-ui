@@ -1,5 +1,7 @@
 packages:
   # all packages in subdirs of sdks/typescript/
   - 'sdks/typescript/*'
+  # private build workspace for the bundled generic A2UI renderer
+  - 'sdks/typescript/client/a2ui-renderer'
   - 'examples/*'
   - 'docs'

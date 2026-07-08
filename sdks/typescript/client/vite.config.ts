@@ -30,6 +30,9 @@ export default defineConfig({
         'react/jsx-runtime',
         '@mcp-ui/shared',
         /@modelcontextprotocol\/sdk(\/.*)?/,
+        // The bundled A2UI renderer HTML (~hundreds of KB) is emitted as a
+        // separate subpath entry and lazy-loaded, keeping the main bundle small.
+        '@mcp-ui/client/a2ui-renderer',
       ],
       output: {
         globals: {
@@ -37,6 +40,7 @@ export default defineConfig({
           'react/jsx-runtime': 'jsxRuntime',
           '@mcp-ui/shared': 'McpUiShared',
           '@modelcontextprotocol/sdk': 'ModelContextProtocolSDK',
+          '@mcp-ui/client/a2ui-renderer': 'McpUiClientA2uiRenderer',
         },
       },
     },

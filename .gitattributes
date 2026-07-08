@@ -1,0 +1,2 @@
+# Prebuilt single-file A2UI renderer artifact (see @mcp-ui/client regen:a2ui-renderer)
+sdks/typescript/client/src/a2ui/a2ui-renderer.html linguist-generated=true

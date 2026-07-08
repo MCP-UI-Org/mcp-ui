@@ -35,6 +35,19 @@ vi.mock('../../utils/app-host-utils', () => ({
   readToolUiResourceHtml: vi.fn(),
 }));
 
+// Mock the bundled A2UI renderer subpath (emitted at build time, so not
+// resolvable from source). The getter lets tests simulate import failure.
+const MOCK_A2UI_RENDERER_HTML = '<!doctype html><html><body>mock a2ui renderer</body></html>';
+let failA2uiRendererImport = false;
+vi.mock('@mcp-ui/client/a2ui-renderer', () => ({
+  get A2UI_RENDERER_HTML() {
+    if (failA2uiRendererImport) {
+      throw new Error('module not found');
+    }
+    return MOCK_A2UI_RENDERER_HTML;
+  },
+}));
+
 // Store mock bridge instance for test access
 let mockBridgeInstance: Partial<AppBridge> | null = null;
 
@@ -755,6 +768,307 @@ describe('<AppRenderer />', () => {
         expect.any(Object),
         customCapabilities,
       );
+    });
+  });
+
+  describe('fallbackContentRenderers (Dynamic View Content)', () => {
+    const CUSTOM_MIME = 'application/vnd.custom-view+json';
+    const CUSTOM_RENDERER_HTML = '<!doctype html><html><body>custom renderer</body></html>';
+
+    function viewContentBlock(
+      mimeType: string,
+      marker?: Record<string, unknown>,
+    ) {
+      return {
+        type: 'resource' as const,
+        resource: {
+          uri: 'content://payload',
+          mimeType,
+          text: JSON.stringify([{ version: 'v0.9', createSurface: { surfaceId: 'main' } }]),
+        },
+        ...(marker ? { _meta: { ui: { content: marker } } } : {}),
+      };
+    }
+
+    // Unmarked a2ui block — what existing A2UI servers emit.
+    const a2uiToolResult = { content: [viewContentBlock('application/a2ui+json')] };
+    const plainToolResult = { content: [{ type: 'text' as const, text: 'no ui here' }] };
+
+    beforeEach(() => {
+      failA2uiRendererImport = false;
+      // Tool declares no renderer view by default in this suite.
+      vi.mocked(appHostUtils.getToolUiResourceUri).mockResolvedValue(null);
+    });
+
+    it('injects the bundled a2ui renderer by default when the tool declares no renderer', async () => {
+      render(<AppRenderer {...defaultProps} toolResult={a2uiToolResult} />);
+
+      await waitFor(() => {
+        expect(screen.getByTestId('app-frame')).toHaveAttribute(
+          'data-html',
+          MOCK_A2UI_RENDERER_HTML,
+        );
+      });
+      expect(screen.queryByText(/Error:/)).not.toBeInTheDocument();
+      expect(appHostUtils.readToolUiResourceHtml).not.toHaveBeenCalled();
+    });
+
+    it('keeps the existing error for results without view content', async () => {
+      render(<AppRenderer {...defaultProps} toolResult={plainToolResult} />);
+
+      await waitFor(() => {
+        expect(screen.getByText(/has no UI resource/)).toBeInTheDocument();
+      });
+    });
+
+    it('supersedes the initial error when an a2ui toolResult arrives late', async () => {
+      const { rerender } = render(<AppRenderer {...defaultProps} />);
+
+      await waitFor(() => {
+        expect(screen.getByText(/has no UI resource/)).toBeInTheDocument();
+      });
+
+      rerender(<AppRenderer {...defaultProps} toolResult={a2uiToolResult} />);
+
+      await waitFor(() => {
+        expect(screen.getByTestId('app-frame')).toHaveAttribute(
+          'data-html',
+          MOCK_A2UI_RENDERER_HTML,
+        );
+      });
+      expect(screen.queryByText(/Error:/)).not.toBeInTheDocument();
+    });
+
+    it('never injects when fallbackContentRenderers is {}', async () => {
+      render(
+        <AppRenderer {...defaultProps} toolResult={a2uiToolResult} fallbackContentRenderers={{}} />,
+      );
+
+      await waitFor(() => {
+        expect(screen.getByText(/has no UI resource/)).toBeInTheDocument();
+      });
+    });
+
+    it('uses a string entry as-is, without dynamic import', async () => {
+      // Even a broken bundled module must not matter for string entries.
+      failA2uiRendererImport = true;
+
+      render(
+        <AppRenderer
+          {...defaultProps}
+          toolResult={{ content: [viewContentBlock(CUSTOM_MIME, {})] }}
+          fallbackContentRenderers={{ [CUSTOM_MIME]: CUSTOM_RENDERER_HTML }}
+        />,
+      );
+
+      await waitFor(() => {
+        expect(screen.getByTestId('app-frame')).toHaveAttribute(
+          'data-html',
+          CUSTOM_RENDERER_HTML,
+        );
+      });
+    });
+
+    it('awaits an async loader entry', async () => {
+      const loader = vi.fn().mockResolvedValue(CUSTOM_RENDERER_HTML);
+
+      render(
+        <AppRenderer
+          {...defaultProps}
+          toolResult={{ content: [viewContentBlock(CUSTOM_MIME, {})] }}
+          fallbackContentRenderers={{ [CUSTOM_MIME]: loader }}
+        />,
+      );
+
+      await waitFor(() => {
+        expect(screen.getByTestId('app-frame')).toHaveAttribute(
+          'data-html',
+          CUSTOM_RENDERER_HTML,
+        );
+      });
+      expect(loader).toHaveBeenCalled();
+    });
+
+    it('reports an actionable error when a loader entry rejects', async () => {
+      const onError = vi.fn();
+      const loader = vi.fn().mockRejectedValue(new Error('chunk load failed'));
+
+      render(
+        <AppRenderer
+          {...defaultProps}
+          toolResult={{ content: [viewContentBlock(CUSTOM_MIME, {})] }}
+          fallbackContentRenderers={{ [CUSTOM_MIME]: loader }}
+          onError={onError}
+        />,
+      );
+
+      await waitFor(() => {
+        expect(onError).toHaveBeenCalledWith(
+          expect.objectContaining({
+            message: expect.stringContaining(CUSTOM_MIME),
+          }),
+        );
+      });
+      expect(onError.mock.calls[0][0].message).toContain('fallbackContentRenderers');
+    });
+
+    it('treats unmarked blocks as view content when their MIME is registered', async () => {
+      render(
+        <AppRenderer
+          {...defaultProps}
+          toolResult={{ content: [viewContentBlock(CUSTOM_MIME)] }}
+          fallbackContentRenderers={{ [CUSTOM_MIME]: CUSTOM_RENDERER_HTML }}
+        />,
+      );
+
+      await waitFor(() => {
+        expect(screen.getByTestId('app-frame')).toHaveAttribute(
+          'data-html',
+          CUSTOM_RENDERER_HTML,
+        );
+      });
+    });
+
+    it('does not inject for marked blocks whose MIME has no registry entry', async () => {
+      render(
+        <AppRenderer {...defaultProps} toolResult={{ content: [viewContentBlock(CUSTOM_MIME, {})] }} />,
+      );
+
+      await waitFor(() => {
+        expect(screen.getByText(/has no UI resource/)).toBeInTheDocument();
+      });
+    });
+
+    it('reads the renderer from a marked block rendererUri (client path)', async () => {
+      vi.mocked(appHostUtils.readToolUiResourceHtml).mockResolvedValue(
+        '<html><body>External renderer</body></html>',
+      );
+
+      render(
+        <AppRenderer
+          {...defaultProps}
+          toolResult={{
+            content: [
+              viewContentBlock('application/a2ui+json', { rendererUri: 'ui://ext/renderer' }),
+            ],
+          }}
+        />,
+      );
+
+      await waitFor(() => {
+        expect(screen.getByTestId('app-frame')).toHaveAttribute(
+          'data-html',
+          '<html><body>External renderer</body></html>',
+        );
+      });
+      // rendererUri (spec-native) wins over the registry entry for the MIME.
+      expect(appHostUtils.readToolUiResourceHtml).toHaveBeenCalledWith(mockClient, {
+        uri: 'ui://ext/renderer',
+      });
+    });
+
+    it('reads the renderer from rendererUri via onReadResource when no client', async () => {
+      const onReadResource = vi.fn().mockResolvedValue({
+        contents: [
+          {
+            uri: 'ui://ext/renderer',
+            mimeType: 'text/html',
+            text: '<html><body>External renderer</body></html>',
+          },
+        ],
+      });
+
+      render(
+        <AppRenderer
+          toolName="test-tool"
+          sandbox={{ url: new URL('http://localhost:8081/sandbox.html') }}
+          toolResult={{
+            content: [viewContentBlock(CUSTOM_MIME, { rendererUri: 'ui://ext/renderer' })],
+          }}
+          onReadResource={onReadResource}
+        />,
+      );
+
+      await waitFor(() => {
+        expect(screen.getByTestId('app-frame')).toHaveAttribute(
+          'data-html',
+          '<html><body>External renderer</body></html>',
+        );
+      });
+      expect(onReadResource).toHaveBeenCalledWith({ uri: 'ui://ext/renderer' }, expect.anything());
+    });
+
+    it('prefers the tool-declared renderer over rendererUri and the registry', async () => {
+      vi.mocked(appHostUtils.getToolUiResourceUri).mockResolvedValue({ uri: 'ui://test-tool' });
+
+      render(
+        <AppRenderer
+          {...defaultProps}
+          toolResult={{
+            content: [
+              viewContentBlock('application/a2ui+json', { rendererUri: 'ui://ext/renderer' }),
+            ],
+          }}
+        />,
+      );
+
+      await waitFor(() => {
+        expect(screen.getByTestId('app-frame')).toHaveAttribute(
+          'data-html',
+          '<html><body>Test Tool UI</body></html>',
+        );
+      });
+      expect(appHostUtils.readToolUiResourceHtml).toHaveBeenCalledWith(mockClient, {
+        uri: 'ui://test-tool',
+      });
+    });
+
+    it('prefers the toolResourceUri prop over the fallback steps', async () => {
+      render(
+        <AppRenderer
+          {...defaultProps}
+          toolResourceUri="ui://custom-uri"
+          toolResult={a2uiToolResult}
+        />,
+      );
+
+      await waitFor(() => {
+        expect(appHostUtils.readToolUiResourceHtml).toHaveBeenCalledWith(mockClient, {
+          uri: 'ui://custom-uri',
+        });
+      });
+    });
+
+    it('injects at the no-client guard when only a2ui content is available', async () => {
+      render(
+        <AppRenderer
+          toolName="test-tool"
+          sandbox={{ url: new URL('http://localhost:8081/sandbox.html') }}
+          toolResult={a2uiToolResult}
+        />,
+      );
+
+      await waitFor(() => {
+        expect(screen.getByTestId('app-frame')).toHaveAttribute(
+          'data-html',
+          MOCK_A2UI_RENDERER_HTML,
+        );
+      });
+    });
+
+    it('reports an actionable error when the bundled renderer fails to load', async () => {
+      failA2uiRendererImport = true;
+      const onError = vi.fn();
+
+      render(<AppRenderer {...defaultProps} toolResult={a2uiToolResult} onError={onError} />);
+
+      await waitFor(() => {
+        expect(onError).toHaveBeenCalledWith(
+          expect.objectContaining({
+            message: expect.stringContaining('fallbackContentRenderers'),
+          }),
+        );
+      });
     });
   });
 });

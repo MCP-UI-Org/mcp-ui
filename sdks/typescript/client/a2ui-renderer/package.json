@@ -1,0 +1,29 @@
+{
+  "name": "@mcp-ui/client-a2ui-renderer",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Generic A2UI renderer bundled into @mcp-ui/client as a prebuilt single-file HTML artifact. Never published to npm; see @mcp-ui/client's regen:a2ui-renderer script.",
+  "dependencies": {
+    "@a2ui/lit": "0.10.1",
+    "@a2ui/markdown-it": "0.0.4",
+    "@a2ui/web_core": "0.10.3",
+    "@lit/context": "^1.1.6",
+    "@modelcontextprotocol/ext-apps": "^1.7.4",
+    "@preact/signals-core": "^1.14.2",
+    "lit": "^3.3.3",
+    "zod": "^3.25.76"
+  },
+  "devDependencies": {
+    "typescript": "^5.0.0",
+    "vite": "^7.3.4",
+    "vite-plugin-singlefile": "^2.3.3",
+    "vitest": "^1.0.0"
+  },
+  "scripts": {
+    "build": "vite build",
+    "lint": "tsc --noEmit",
+    "test": "vitest run"
+  },
+  "license": "Apache-2.0"
+}
