@@ -508,7 +508,6 @@ function ToolUI({ client, toolName, toolInput, toolResult }) {
 - `sendPromptListChanged()` - Notify guest when prompts change
 - `teardownResource()` - Clean up before unmounting
 
-<<<<<<< copilot/add-hostinfo-hostcapabilities-props
 ### Customizing Host Identity
 
 By default, `AppRenderer` identifies itself as "MCP-UI Host" to guest apps. You can customize the host identity and capabilities to properly identify your application:
@@ -544,7 +543,7 @@ function ToolUI({ client, toolName }) {
 ```
 
 This allows guest apps to know they're running in your specific host application and what capabilities are available.
-=======
+
 ### Handling Custom Requests (`onFallbackRequest`)
 
 AppRenderer includes built-in handlers for standard MCP Apps methods (`tools/call`, `ui/message`, `ui/open-link`, etc.). The `onFallbackRequest` prop lets you handle **any JSON-RPC request that doesn't match a built-in handler**. This is useful for:
@@ -593,7 +592,6 @@ The `sendExperimentalRequest` helper sends a properly formatted JSON-RPC request
 ::: tip Method Naming Convention
 Use the `x/<namespace>/<action>` prefix for experimental methods (e.g., `x/clipboard/write`). Standard MCP methods not yet in the Apps spec (e.g., `sampling/createMessage`) should use their canonical method names. When an experimental method proves useful, it can be promoted to a standard method in the [ext-apps spec](https://github.com/modelcontextprotocol/ext-apps).
 :::
->>>>>>> main
 
 ### Using Without an MCP Client
 
