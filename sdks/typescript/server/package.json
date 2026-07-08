@@ -17,6 +17,15 @@
   "files": [
     "dist"
   ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/MCP-UI-Org/mcp-ui.git",
+    "directory": "sdks/typescript/server"
+  },
+  "bugs": {
+    "url": "https://github.com/MCP-UI-Org/mcp-ui/issues"
+  },
+  "homepage": "https://mcpui.dev/guide/server/typescript/overview",
   "devDependencies": {
     "@types/node": "^18.19.100",
     "@vitest/coverage-v8": "^1.0.0",
