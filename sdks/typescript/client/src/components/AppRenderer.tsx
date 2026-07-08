@@ -34,6 +34,7 @@ import {
 
 import { AppFrame, type SandboxConfig } from './AppFrame';
 import { getToolUiResourceUri, readToolUiResourceHtml } from '../utils/app-host-utils';
+import { hasA2uiContent } from '../a2ui/detection';
 
 /**
  * Extra metadata passed to request handlers (from AppBridge).
@@ -94,6 +95,27 @@ export interface AppRendererProps {
 
   /** Host capabilities to advertise to the MCP app. If not provided, capabilities are derived from serverCapabilities. */
   hostCapabilities?: McpUiHostCapabilities;
+
+  /**
+   * Bundled generic A2UI renderer fallback, used when the tool declares no
+   * UI resource of its own (no `_meta.ui.resourceUri`).
+   *
+   * - `undefined` (default): auto — inject the bundled renderer when the
+   *   tool declares no renderer AND `toolResult` contains an
+   *   `application/a2ui+json` embedded resource (see {@link hasA2uiContent}).
+   * - `false`: never inject.
+   * - `true`: always inject when the tool declares no renderer, without
+   *   inspecting `toolResult`.
+   * - `{ html }`: like `true`, but render the provided HTML instead of the
+   *   bundled renderer (e.g. statically imported `A2UI_RENDERER_HTML` from
+   *   `@mcp-ui/client/a2ui-renderer` for UMD/no-dynamic-import setups, or a
+   *   custom A2UI renderer).
+   *
+   * Tools that declare their own renderer are never affected. In auto mode,
+   * if `toolResult` arrives after mount, an initial "no UI resource" error
+   * may surface briefly and is superseded once the result is detected.
+   */
+  a2uiRenderer?: boolean | { html?: string };
 
   /** Handler for open-link requests from the guest UI */
   onOpenLink?: (
@@ -278,6 +300,7 @@ export const AppRenderer = forwardRef<AppRendererHandle, AppRendererProps>((prop
     hostContext,
     hostInfo,
     hostCapabilities,
+    a2uiRenderer,
     onMessage,
     onOpenLink,
     onLoggingMessage,
@@ -295,6 +318,16 @@ export const AppRenderer = forwardRef<AppRendererHandle, AppRendererProps>((prop
   const [appBridge, setAppBridge] = useState<AppBridge | null>(null);
   const [html, setHtml] = useState<string | null>(htmlProp ?? null);
   const [error, setError] = useState<Error | null>(null);
+
+  // Bundled A2UI renderer fallback, derived to primitives so Effect 2's
+  // dependencies stay stable across inline-object props and toolResult
+  // identity changes.
+  const a2uiMode: 'auto' | 'on' | 'off' =
+    a2uiRenderer === undefined ? 'auto' : a2uiRenderer === false ? 'off' : 'on';
+  const a2uiHtmlOverride =
+    typeof a2uiRenderer === 'object' && a2uiRenderer !== null ? a2uiRenderer.html : undefined;
+  const shouldInjectA2ui =
+    a2uiMode === 'on' || (a2uiMode === 'auto' && hasA2uiContent(toolResult));
 
   // Refs for callbacks
   const onMessageRef = useRef(onMessage);
@@ -456,19 +489,54 @@ export const AppRenderer = forwardRef<AppRendererHandle, AppRendererProps>((prop
     const canFetchWithClient = !!client;
     const canFetchWithCallback = !!toolResourceUri && !!onReadResourceRef.current;
 
-    if (!canFetchWithClient && !canFetchWithCallback) {
-      setError(
-        new Error(
-          "Either 'html' prop, 'client', or ('toolResourceUri' + 'onReadResource') must be provided to fetch UI resource",
-        ),
-      );
-      return;
-    }
-
     let mounted = true;
+
+    // Resolves the HTML of the generic A2UI renderer fallback: the
+    // a2uiRenderer prop's custom HTML if given, otherwise the bundled
+    // artifact behind the lazy '@mcp-ui/client/a2ui-renderer' subpath.
+    const resolveA2uiFallbackHtml = async (): Promise<string> => {
+      if (a2uiHtmlOverride) {
+        return a2uiHtmlOverride;
+      }
+      try {
+        const rendererModule = await import('@mcp-ui/client/a2ui-renderer');
+        return rendererModule.A2UI_RENDERER_HTML;
+      } catch (err) {
+        throw new Error(
+          "Failed to load the bundled A2UI renderer ('@mcp-ui/client/a2ui-renderer'). " +
+            'If your bundler cannot resolve this subpath (e.g. UMD builds), import ' +
+            "A2UI_RENDERER_HTML from '@mcp-ui/client/a2ui-renderer' statically and pass it " +
+            'via the a2uiRenderer={{ html }} prop.',
+          { cause: err },
+        );
+      }
+    };
+
+    // Injects the A2UI renderer fallback when enabled; returns true if it
+    // handled HTML resolution (superseding any earlier error).
+    const applyA2uiFallback = async (): Promise<boolean> => {
+      if (!shouldInjectA2ui) return false;
+      console.log('[AppRenderer] Injecting bundled generic A2UI renderer');
+      const fallbackHtml = await resolveA2uiFallbackHtml();
+      if (!mounted) return true;
+      setError(null);
+      setHtml(fallbackHtml);
+      return true;
+    };
 
     const fetchHtml = async () => {
       try {
+        if (!canFetchWithClient && !canFetchWithCallback) {
+          if (await applyA2uiFallback()) return;
+          if (!mounted) return;
+          setError(
+            new Error(
+              "Either 'html' prop, 'client', or ('toolResourceUri' + 'onReadResource') must be provided to fetch UI resource",
+            ),
+          );
+          return;
+        }
+
         // Get resource URI
         let uri: string;
         if (toolResourceUri) {
@@ -478,6 +546,9 @@ export const AppRenderer = forwardRef<AppRendererHandle, AppRendererProps>((prop
           console.log(`[AppRenderer] Fetching resource URI for tool: ${toolName}`);
           const info = await getToolUiResourceUri(client, toolName);
           if (!info) {
+            // Tool predeclares no renderer view — the bundled A2UI renderer
+            // (when enabled) takes over instead of erroring out.
+            if (await applyA2uiFallback()) return;
             throw new Error(
               `Tool ${toolName} has no UI resource (no ui/resourceUri in tool._meta)`,
             );
@@ -536,7 +607,7 @@ export const AppRenderer = forwardRef<AppRendererHandle, AppRendererProps>((prop
     return () => {
       mounted = false;
     };
-  }, [client, toolName, toolResourceUri, htmlProp]);
+  }, [client, toolName, toolResourceUri, htmlProp, shouldInjectA2ui, a2uiHtmlOverride]);
 
   // Effect 3: Sync host context when it changes
   useEffect(() => {

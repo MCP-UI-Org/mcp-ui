@@ -35,6 +35,19 @@ vi.mock('../../utils/app-host-utils', () => ({
   readToolUiResourceHtml: vi.fn(),
 }));
 
+// Mock the bundled A2UI renderer subpath (emitted at build time, so not
+// resolvable from source). The getter lets tests simulate import failure.
+const MOCK_A2UI_RENDERER_HTML = '<!doctype html><html><body>mock a2ui renderer</body></html>';
+let failA2uiRendererImport = false;
+vi.mock('@mcp-ui/client/a2ui-renderer', () => ({
+  get A2UI_RENDERER_HTML() {
+    if (failA2uiRendererImport) {
+      throw new Error('module not found');
+    }
+    return MOCK_A2UI_RENDERER_HTML;
+  },
+}));
+
 // Store mock bridge instance for test access
 let mockBridgeInstance: Partial<AppBridge> | null = null;
 
@@ -755,6 +768,149 @@ describe('<AppRenderer />', () => {
         expect.any(Object),
         customCapabilities,
       );
+    });
+  });
+
+  describe('a2uiRenderer fallback', () => {
+    const a2uiToolResult = {
+      content: [
+        {
+          type: 'resource' as const,
+          resource: {
+            uri: 'a2ui://counter',
+            mimeType: 'application/a2ui+json',
+            text: JSON.stringify([{ version: 'v0.9', createSurface: { surfaceId: 'main' } }]),
+          },
+        },
+      ],
+    };
+    const plainToolResult = { content: [{ type: 'text' as const, text: 'no ui here' }] };
+
+    beforeEach(() => {
+      failA2uiRendererImport = false;
+      // Tool declares no renderer view by default in this suite.
+      vi.mocked(appHostUtils.getToolUiResourceUri).mockResolvedValue(null);
+    });
+
+    it('auto mode injects the bundled renderer for a2ui results when the tool declares no renderer', async () => {
+      render(<AppRenderer {...defaultProps} toolResult={a2uiToolResult} />);
+
+      await waitFor(() => {
+        expect(screen.getByTestId('app-frame')).toHaveAttribute(
+          'data-html',
+          MOCK_A2UI_RENDERER_HTML,
+        );
+      });
+      expect(screen.queryByText(/Error:/)).not.toBeInTheDocument();
+      expect(appHostUtils.readToolUiResourceHtml).not.toHaveBeenCalled();
+    });
+
+    it('auto mode keeps the existing error for results without a2ui content', async () => {
+      render(<AppRenderer {...defaultProps} toolResult={plainToolResult} />);
+
+      await waitFor(() => {
+        expect(screen.getByText(/has no UI resource/)).toBeInTheDocument();
+      });
+    });
+
+    it('supersedes the initial error when an a2ui toolResult arrives late', async () => {
+      const { rerender } = render(<AppRenderer {...defaultProps} />);
+
+      await waitFor(() => {
+        expect(screen.getByText(/has no UI resource/)).toBeInTheDocument();
+      });
+
+      rerender(<AppRenderer {...defaultProps} toolResult={a2uiToolResult} />);
+
+      await waitFor(() => {
+        expect(screen.getByTestId('app-frame')).toHaveAttribute(
+          'data-html',
+          MOCK_A2UI_RENDERER_HTML,
+        );
+      });
+      expect(screen.queryByText(/Error:/)).not.toBeInTheDocument();
+    });
+
+    it('never injects when a2uiRenderer is false', async () => {
+      render(<AppRenderer {...defaultProps} toolResult={a2uiToolResult} a2uiRenderer={false} />);
+
+      await waitFor(() => {
+        expect(screen.getByText(/has no UI resource/)).toBeInTheDocument();
+      });
+    });
+
+    it('injects without detection when a2uiRenderer is true', async () => {
+      render(<AppRenderer {...defaultProps} toolResult={plainToolResult} a2uiRenderer={true} />);
+
+      await waitFor(() => {
+        expect(screen.getByTestId('app-frame')).toHaveAttribute(
+          'data-html',
+          MOCK_A2UI_RENDERER_HTML,
+        );
+      });
+    });
+
+    it('uses custom renderer HTML when a2uiRenderer provides html', async () => {
+      const customHtml = '<!doctype html><html><body>custom a2ui renderer</body></html>';
+      // Even a broken bundled module must not matter when html is overridden.
+      failA2uiRendererImport = true;
+
+      render(
+        <AppRenderer
+          {...defaultProps}
+          toolResult={a2uiToolResult}
+          a2uiRenderer={{ html: customHtml }}
+        />,
+      );
+
+      await waitFor(() => {
+        expect(screen.getByTestId('app-frame')).toHaveAttribute('data-html', customHtml);
+      });
+    });
+
+    it('prefers the tool-declared renderer over the fallback', async () => {
+      vi.mocked(appHostUtils.getToolUiResourceUri).mockResolvedValue({ uri: 'ui://test-tool' });
+
+      render(<AppRenderer {...defaultProps} toolResult={a2uiToolResult} />);
+
+      await waitFor(() => {
+        expect(screen.getByTestId('app-frame')).toHaveAttribute(
+          'data-html',
+          '<html><body>Test Tool UI</body></html>',
+        );
+      });
+    });
+
+    it('injects at the no-client guard when only a2ui content is available', async () => {
+      render(
+        <AppRenderer
+          toolName="test-tool"
+          sandbox={{ url: new URL('http://localhost:8081/sandbox.html') }}
+          toolResult={a2uiToolResult}
+        />,
+      );
+
+      await waitFor(() => {
+        expect(screen.getByTestId('app-frame')).toHaveAttribute(
+          'data-html',
+          MOCK_A2UI_RENDERER_HTML,
+        );
+      });
+    });
+
+    it('reports an actionable error when the bundled renderer fails to load', async () => {
+      failA2uiRendererImport = true;
+      const onError = vi.fn();
+
+      render(<AppRenderer {...defaultProps} toolResult={a2uiToolResult} onError={onError} />);
+
+      await waitFor(() => {
+        expect(onError).toHaveBeenCalledWith(
+          expect.objectContaining({
+            message: expect.stringContaining('a2uiRenderer={{ html }}'),
+          }),
+        );
+      });
     });
   });
 });
