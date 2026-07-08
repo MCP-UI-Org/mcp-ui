@@ -34,7 +34,12 @@ import {
 
 import { AppFrame, type SandboxConfig } from './AppFrame';
 import { getToolUiResourceUri, readToolUiResourceHtml } from '../utils/app-host-utils';
-import { hasA2uiContent } from '../a2ui/detection';
+import {
+  getViewContentBlocks,
+  getViewContentRendererUri,
+  type FallbackContentRenderers,
+} from '../view-content';
+import { DEFAULT_FALLBACK_CONTENT_RENDERERS } from '../a2ui/detection';
 
 /**
  * Extra metadata passed to request handlers (from AppBridge).
@@ -97,25 +102,33 @@ export interface AppRendererProps {
   hostCapabilities?: McpUiHostCapabilities;
 
   /**
-   * Bundled generic A2UI renderer fallback, used when the tool declares no
-   * UI resource of its own (no `_meta.ui.resourceUri`).
+   * Fallback content renderers, keyed by MIME type — used when the tool
+   * declares no UI resource of its own (no `_meta.ui.resourceUri`) but
+   * `toolResult` carries view-content blocks (ext-apps "Dynamic View
+   * Content", PR #699). The first view-content block whose MIME type has an
+   * entry here selects the renderer. Entries are either the renderer's
+   * self-contained HTML (the escape hatch for UMD/no-dynamic-import setups)
+   * or an async loader resolving to it, so the renderer stays out of the
+   * main bundle.
    *
-   * - `undefined` (default): auto — inject the bundled renderer when the
-   *   tool declares no renderer AND `toolResult` contains an
-   *   `application/a2ui+json` embedded resource (see {@link hasA2uiContent}).
-   * - `false`: never inject.
-   * - `true`: always inject when the tool declares no renderer, without
-   *   inspecting `toolResult`.
-   * - `{ html }`: like `true`, but render the provided HTML instead of the
-   *   bundled renderer (e.g. statically imported `A2UI_RENDERER_HTML` from
-   *   `@mcp-ui/client/a2ui-renderer` for UMD/no-dynamic-import setups, or a
-   *   custom A2UI renderer).
+   * - `undefined` (default): {@link DEFAULT_FALLBACK_CONTENT_RENDERERS} —
+   *   the bundled generic A2UI renderer, lazily loaded, for
+   *   `application/a2ui+json` (and the legacy `application/json+a2ui`).
+   * - `{}`: disable all fallback renderers.
+   * - A provided registry *replaces* the default; spread
+   *   `DEFAULT_FALLBACK_CONTENT_RENDERERS` to extend it instead.
    *
-   * Tools that declare their own renderer are never affected. In auto mode,
-   * if `toolResult` arrives after mount, an initial "no UI resource" error
-   * may surface briefly and is superseded once the result is detected.
+   * The registry keys also gate legacy detection: unmarked embedded
+   * resources (no `_meta.ui.content`) count as view content only when their
+   * MIME type is a key of the active registry.
+   *
+   * Tools that declare their own renderer are never affected, and a marked
+   * block's `_meta.ui.content.rendererUri` (a `ui://` renderer resource)
+   * takes precedence over this registry. If `toolResult` arrives after
+   * mount, an initial "no UI resource" error may surface briefly and is
+   * superseded once view content is detected.
    */
-  a2uiRenderer?: boolean | { html?: string };
+  fallbackContentRenderers?: FallbackContentRenderers;
 
   /** Handler for open-link requests from the guest UI */
   onOpenLink?: (
@@ -300,7 +313,7 @@ export const AppRenderer = forwardRef<AppRendererHandle, AppRendererProps>((prop
     hostContext,
     hostInfo,
     hostCapabilities,
-    a2uiRenderer,
+    fallbackContentRenderers,
     onMessage,
     onOpenLink,
     onLoggingMessage,
@@ -319,15 +332,27 @@ export const AppRenderer = forwardRef<AppRendererHandle, AppRendererProps>((prop
   const [html, setHtml] = useState<string | null>(htmlProp ?? null);
   const [error, setError] = useState<Error | null>(null);
 
-  // Bundled A2UI renderer fallback, derived to primitives so Effect 2's
-  // dependencies stay stable across inline-object props and toolResult
-  // identity changes.
-  const a2uiMode: 'auto' | 'on' | 'off' =
-    a2uiRenderer === undefined ? 'auto' : a2uiRenderer === false ? 'off' : 'on';
-  const a2uiHtmlOverride =
-    typeof a2uiRenderer === 'object' && a2uiRenderer !== null ? a2uiRenderer.html : undefined;
-  const shouldInjectA2ui =
-    a2uiMode === 'on' || (a2uiMode === 'auto' && hasA2uiContent(toolResult));
+  // Fallback content renderers (Dynamic View Content), derived to primitives
+  // so Effect 2's dependencies stay stable across inline-object props and
+  // toolResult identity changes; the registry itself is read through a ref.
+  const contentRenderers = fallbackContentRenderers ?? DEFAULT_FALLBACK_CONTENT_RENDERERS;
+  const contentRendererMimeTypes = Object.keys(contentRenderers);
+  const viewContentBlocks = getViewContentBlocks(toolResult, {
+    unmarkedMimeTypes: contentRendererMimeTypes,
+  });
+  // Renderer resolution step 4: the first marked block naming a ui://
+  // renderer view. Step 5: the first block whose MIME has a registry entry.
+  const fallbackRendererUri = viewContentBlocks
+    .map(getViewContentRendererUri)
+    .find((uri) => uri !== undefined);
+  const fallbackMimeType = viewContentBlocks
+    .map((block) => block.resource.mimeType)
+    .find(
+      (mimeType) => typeof mimeType === 'string' && contentRendererMimeTypes.includes(mimeType),
+    );
+  // Keys as a primitive: Effect 2 re-runs when the active registry's
+  // coverage changes, not on inline-object identity churn.
+  const contentRendererMimeTypesKey = contentRendererMimeTypes.join(',');
 
   // Refs for callbacks
   const onMessageRef = useRef(onMessage);
@@ -341,6 +366,9 @@ export const AppRenderer = forwardRef<AppRendererHandle, AppRendererProps>((prop
   const onReadResourceRef = useRef(onReadResource);
   const onListPromptsRef = useRef(onListPrompts);
   const onFallbackRequestRef = useRef(onFallbackRequest);
+  // The registry lives in a ref so inline-object props don't churn Effect 2;
+  // the effect depends on primitives derived from it instead.
+  const contentRenderersRef = useRef(contentRenderers);
 
   useEffect(() => {
     onMessageRef.current = onMessage;
@@ -354,6 +382,7 @@ export const AppRenderer = forwardRef<AppRendererHandle, AppRendererProps>((prop
     onReadResourceRef.current = onReadResource;
     onListPromptsRef.current = onListPrompts;
     onFallbackRequestRef.current = onFallbackRequest;
+    contentRenderersRef.current = contentRenderers;
   });
 
   // Expose send methods via ref for Host → Guest notifications
@@ -491,43 +520,82 @@ export const AppRenderer = forwardRef<AppRendererHandle, AppRendererProps>((prop
 
     let mounted = true;
 
-    // Resolves the HTML of the generic A2UI renderer fallback: the
-    // a2uiRenderer prop's custom HTML if given, otherwise the bundled
-    // artifact behind the lazy '@mcp-ui/client/a2ui-renderer' subpath.
-    const resolveA2uiFallbackHtml = async (): Promise<string> => {
-      if (a2uiHtmlOverride) {
-        return a2uiHtmlOverride;
+    // Reads a ui:// resource's HTML — via the client when available,
+    // otherwise via the onReadResource callback.
+    const readHtmlByUri = async (uri: string): Promise<string> => {
+      console.log(`[AppRenderer] Reading resource HTML from: ${uri}`);
+      if (client) {
+        return readToolUiResourceHtml(client, { uri });
+      }
+      if (onReadResourceRef.current) {
+        const result = await onReadResourceRef.current({ uri }, {} as RequestHandlerExtra);
+        if (!result.contents || result.contents.length !== 1) {
+          throw new Error('Unsupported UI resource content length: ' + result.contents?.length);
+        }
+        const content = result.contents[0];
+        const isHtml = (t?: string) => t === RESOURCE_MIME_TYPE;
+
+        if ('text' in content && typeof content.text === 'string' && isHtml(content.mimeType)) {
+          return content.text;
+        }
+        if ('blob' in content && typeof content.blob === 'string' && isHtml(content.mimeType)) {
+          return atob(content.blob);
+        }
+        throw new Error('Unsupported UI resource content format: ' + JSON.stringify(content));
+      }
+      throw new Error('No way to read resource HTML');
+    };
+
+    // Resolves a fallbackContentRenderers registry entry to renderer HTML.
+    const resolveFallbackHtml = async (mimeType: string): Promise<string> => {
+      const entry = contentRenderersRef.current[mimeType];
+      if (typeof entry === 'string') {
+        return entry;
       }
       try {
-        const rendererModule = await import('@mcp-ui/client/a2ui-renderer');
-        return rendererModule.A2UI_RENDERER_HTML;
+        return await entry();
       } catch (err) {
         throw new Error(
-          "Failed to load the bundled A2UI renderer ('@mcp-ui/client/a2ui-renderer'). " +
-            'If your bundler cannot resolve this subpath (e.g. UMD builds), import ' +
-            "A2UI_RENDERER_HTML from '@mcp-ui/client/a2ui-renderer' statically and pass it " +
-            'via the a2uiRenderer={{ html }} prop.',
+          `Failed to load the fallback content renderer for MIME type '${mimeType}'. ` +
+            'If your bundler cannot resolve dynamic imports (e.g. UMD builds), pass the ' +
+            'renderer HTML as a string entry in the fallbackContentRenderers prop.',
           { cause: err },
         );
       }
     };
 
-    // Injects the A2UI renderer fallback when enabled; returns true if it
-    // handled HTML resolution (superseding any earlier error).
-    const applyA2uiFallback = async (): Promise<boolean> => {
-      if (!shouldInjectA2ui) return false;
-      console.log('[AppRenderer] Injecting bundled generic A2UI renderer');
-      const fallbackHtml = await resolveA2uiFallbackHtml();
-      if (!mounted) return true;
-      setError(null);
-      setHtml(fallbackHtml);
-      return true;
+    // Renderer resolution for view content when the tool declares no
+    // renderer of its own: a marked block's rendererUri first (spec-native),
+    // then the fallbackContentRenderers registry. Returns true if it handled
+    // HTML resolution (superseding any earlier error).
+    const applyFallback = async (): Promise<boolean> => {
+      if (fallbackRendererUri && (client || onReadResourceRef.current)) {
+        console.log(
+          `[AppRenderer] Using view-content rendererUri: ${fallbackRendererUri}`,
+        );
+        const rendererHtml = await readHtmlByUri(fallbackRendererUri);
+        if (!mounted) return true;
+        setError(null);
+        setHtml(rendererHtml);
+        return true;
+      }
+      if (fallbackMimeType) {
+        console.log(
+          `[AppRenderer] Injecting fallback content renderer for ${fallbackMimeType}`,
+        );
+        const fallbackHtml = await resolveFallbackHtml(fallbackMimeType);
+        if (!mounted) return true;
+        setError(null);
+        setHtml(fallbackHtml);
+        return true;
+      }
+      return false;
     };
 
     const fetchHtml = async () => {
       try {
         if (!canFetchWithClient && !canFetchWithCallback) {
-          if (await applyA2uiFallback()) return;
+          if (await applyFallback()) return;
           if (!mounted) return;
           setError(
             new Error(
@@ -546,9 +614,9 @@ export const AppRenderer = forwardRef<AppRendererHandle, AppRendererProps>((prop
           console.log(`[AppRenderer] Fetching resource URI for tool: ${toolName}`);
           const info = await getToolUiResourceUri(client, toolName);
           if (!info) {
-            // Tool predeclares no renderer view — the bundled A2UI renderer
-            // (when enabled) takes over instead of erroring out.
-            if (await applyA2uiFallback()) return;
+            // Tool predeclares no renderer view — view-content fallbacks
+            // take over instead of erroring out.
+            if (await applyFallback()) return;
             throw new Error(
               `Tool ${toolName} has no UI resource (no ui/resourceUri in tool._meta)`,
             );
@@ -561,35 +629,7 @@ export const AppRenderer = forwardRef<AppRendererHandle, AppRendererProps>((prop
 
         if (!mounted) return;
 
-        // Read HTML content - use client if available, otherwise use onReadResource callback
-        console.log(`[AppRenderer] Reading resource HTML from: ${uri}`);
-        let htmlContent: string;
-
-        if (client) {
-          htmlContent = await readToolUiResourceHtml(client, { uri });
-        } else if (onReadResourceRef.current) {
-          // Use the onReadResource callback to fetch the HTML
-          const result = await onReadResourceRef.current({ uri }, {} as RequestHandlerExtra);
-          if (!result.contents || result.contents.length !== 1) {
-            throw new Error('Unsupported UI resource content length: ' + result.contents?.length);
-          }
-          const content = result.contents[0];
-          const isHtml = (t?: string) => t === RESOURCE_MIME_TYPE;
-
-          if ('text' in content && typeof content.text === 'string' && isHtml(content.mimeType)) {
-            htmlContent = content.text;
-          } else if (
-            'blob' in content &&
-            typeof content.blob === 'string' &&
-            isHtml(content.mimeType)
-          ) {
-            htmlContent = atob(content.blob);
-          } else {
-            throw new Error('Unsupported UI resource content format: ' + JSON.stringify(content));
-          }
-        } else {
-          throw new Error('No way to read resource HTML');
-        }
+        const htmlContent = await readHtmlByUri(uri);
 
         if (!mounted) return;
 
@@ -607,7 +647,15 @@ export const AppRenderer = forwardRef<AppRendererHandle, AppRendererProps>((prop
     return () => {
       mounted = false;
     };
-  }, [client, toolName, toolResourceUri, htmlProp, shouldInjectA2ui, a2uiHtmlOverride]);
+  }, [
+    client,
+    toolName,
+    toolResourceUri,
+    htmlProp,
+    fallbackRendererUri,
+    fallbackMimeType,
+    contentRendererMimeTypesKey,
+  ]);
 
   // Effect 3: Sync host context when it changes
   useEffect(() => {
