@@ -19,10 +19,13 @@ import { setupSandboxProxyIframe, type SandboxCancelRef } from '../utils/app-hos
  * to set CSP via HTTP headers (tamper-proof) rather than relying on meta tags or
  * postMessage-based CSP injection (which can be bypassed by malicious content).
  *
+ * Accepts the base href as a string (not a URL instance) so callers can key React
+ * effects on the href value rather than the URL object reference.
+ *
  * @see https://github.com/modelcontextprotocol/ext-apps/pull/234
  */
-function buildSandboxUrl(baseUrl: URL, csp?: McpUiResourceCsp): URL {
-  const url = new URL(baseUrl.href);
+function buildSandboxUrl(baseUrlHref: string, csp?: McpUiResourceCsp): URL {
+  const url = new URL(baseUrlHref);
   if (csp && Object.keys(csp).length > 0) {
     url.searchParams.set('csp', JSON.stringify(csp));
   }
@@ -139,17 +142,24 @@ export const AppFrame = (props: AppFrameProps) => {
     onErrorRef.current = onError;
   });
 
+  // Key the effect on the href string rather than the URL object so that callers
+  // passing `new URL(...)` inline (creating a fresh reference every render) do not
+  // tear down and rebuild the sandbox on each parent re-render. See issue #193.
+  const sandboxUrlHref = sandbox.url.href;
+
   // Effect 1: Set up sandbox iframe and connect AppBridge
   useEffect(() => {
     // Build sandbox URL with CSP query parameter for HTTP header-based CSP enforcement.
     // Servers that support this will parse the CSP from the query param and set it via
     // HTTP headers (tamper-proof). The CSP is also sent via postMessage as fallback.
-    const sandboxUrl = buildSandboxUrl(sandbox.url, sandbox.csp);
+    const sandboxUrl = buildSandboxUrl(sandboxUrlHref, sandbox.csp);
     const sandboxUrlString = sandboxUrl.href;
 
-    // If we already have an iframe set up for this sandbox URL AND the same appBridge, skip setup
-    // This preserves the iframe state across React re-renders (including StrictMode)
-    // but ensures isolation when switching to a different app/resource (different appBridge)
+    // If we already have an iframe set up for this sandbox URL AND the same appBridge, skip setup.
+    // This preserves the iframe state across React re-renders (including StrictMode) but ensures
+    // isolation when switching to a different app/resource (different appBridge). The dedupe refs
+    // are only set once setup reaches `setBridgeConnected(true)` below, so an aborted in-flight
+    // setup can never poison this guard (see issue #193).
     if (
       currentSandboxUrlRef.current === sandboxUrlString &&
       currentAppBridgeRef.current === appBridge &&
@@ -186,8 +196,6 @@ export const AppFrame = (props: AppFrameProps) => {
         if (!mounted) return;
 
         iframeRef.current = iframe;
-        currentSandboxUrlRef.current = sandboxUrlString;
-        currentAppBridgeRef.current = appBridge;
         if (containerRef.current) {
           containerRef.current.appendChild(iframe);
         }
@@ -228,6 +236,13 @@ export const AppFrame = (props: AppFrameProps) => {
 
         if (!mounted) return;
 
+        // Only mark the URL + bridge as the "current" setup once connect succeeds.
+        // If we wrote these earlier and the setup aborted (e.g. parent re-rendered
+        // before `connect` resolved), a subsequent effect run would match the guard
+        // above and short-circuit, leaving the bridge permanently disconnected.
+        currentSandboxUrlRef.current = sandboxUrlString;
+        currentAppBridgeRef.current = appBridge;
+
         setBridgeConnected(true);
       } catch (err) {
         console.error('[AppFrame] Error:', err);
@@ -244,7 +259,7 @@ export const AppFrame = (props: AppFrameProps) => {
       mounted = false;
       cancelRef.cancel?.();
     };
-  }, [sandbox.url, sandbox.csp, appBridge]);
+  }, [sandboxUrlHref, sandbox.csp, appBridge]);
 
   // Effect 2: Send HTML to sandbox when bridge is connected
   useEffect(() => {
