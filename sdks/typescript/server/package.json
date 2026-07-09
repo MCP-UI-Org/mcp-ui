@@ -72,5 +72,14 @@
   "dependencies": {
     "@modelcontextprotocol/ext-apps": "^0.3.1",
     "@modelcontextprotocol/sdk": "^1.25.1"
+  },
+  "homepage": "https://github.com/MCP-UI-Org/mcp-ui/tree/main/sdks/typescript/server#readme",
+  "repository": {
+    "url": "git+https://github.com/MCP-UI-Org/mcp-ui.git",
+    "directory": "sdks/typescript/server",
+    "type": "git"
+  },
+  "bugs": {
+    "url": "https://github.com/MCP-UI-Org/mcp-ui/issues"
   }
 }

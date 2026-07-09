@@ -86,5 +86,14 @@
       ]
     ]
   },
-  "license": "Apache-2.0"
+  "license": "Apache-2.0",
+  "homepage": "https://github.com/MCP-UI-Org/mcp-ui/tree/main/sdks/typescript/client#readme",
+  "repository": {
+    "url": "git+https://github.com/MCP-UI-Org/mcp-ui.git",
+    "directory": "sdks/typescript/client",
+    "type": "git"
+  },
+  "bugs": {
+    "url": "https://github.com/MCP-UI-Org/mcp-ui/issues"
+  }
 }
