@@ -3,6 +3,15 @@
   "version": "6.1.0",
   "private": false,
   "description": "mcp-ui Server SDK",
+  "homepage": "https://github.com/MCP-UI-Org/mcp-ui/tree/main/sdks/typescript/server#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/MCP-UI-Org/mcp-ui.git",
+    "directory": "sdks/typescript/server"
+  },
+  "bugs": {
+    "url": "https://github.com/MCP-UI-Org/mcp-ui/issues"
+  },
   "type": "module",
   "main": "./dist/index.cjs",
   "module": "./dist/index.mjs",
