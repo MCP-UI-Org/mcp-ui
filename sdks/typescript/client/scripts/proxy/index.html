@@ -76,11 +76,18 @@
         inner.src = 'about:blank';
         document.body.appendChild(inner);
 
-        // Wait for HTML content from parent
+        // Wait for HTML content from parent (host → proxy).
+        // The host bridge delivers it as a JSON-RPC notification
+        // { method: 'ui/notifications/sandbox-resource-ready', params: { html, csp } }
+        // (see @modelcontextprotocol/ext-apps AppBridge.sendSandboxResourceReady).
         window.addEventListener('message', (event) => {
-          if (event.source === window.parent && event.data && event.data.type === 'ui-html-content') {
-            const payload = event.data.payload || {};
-            const html = payload.html;
+          if (
+            event.source === window.parent &&
+            event.data &&
+            event.data.method === 'ui/notifications/sandbox-resource-ready'
+          ) {
+            const params = event.data.params || {};
+            const html = params.html;
             if (typeof html === 'string') {
               // Try to write immediately; if contentDocument isn't ready, queue for retry
               if (!renderHtmlInIframe(html)) {
@@ -98,8 +105,10 @@
           }
         });
 
-        // Notify parent that proxy is ready to receive HTML (distinct event)
-        window.parent.postMessage({ type: 'ui-proxy-iframe-ready' }, '*');
+        // Notify parent that the proxy is ready to receive HTML. The host waits
+        // for a message whose `.method` equals SANDBOX_PROXY_READY_METHOD
+        // ('ui/notifications/sandbox-proxy-ready') in setupSandboxProxyIframe.
+        window.parent.postMessage({ method: 'ui/notifications/sandbox-proxy-ready' }, '*');
       } else if (target) {
         if (!isValidHttpUrl(target)) {
           document.body.textContent = 'Error: invalid URL. Only HTTP and HTTPS URLs are allowed.';
