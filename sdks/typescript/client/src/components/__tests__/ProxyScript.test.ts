@@ -74,4 +74,37 @@ describe('Proxy script', () => {
     expect(innerIframe).toBeTruthy();
     expect(innerIframe?.hasAttribute('srcdoc')).toBe(false);
   });
+
+  it('defaults to raw-HTML mode when loaded with NO query params (how AppFrame calls it)', async () => {
+    // The real host component (AppFrame) sets neither ?contentType nor ?url — it
+    // delivers HTML via postMessage. Before the mode-default fix, the proxy fell
+    // through to "Error: missing url or html parameter" and never posted ready,
+    // so AppFrame timed out with a blank card. This guards that exact failure.
+    const proxyPath = path.resolve(__dirname, '../../../scripts/proxy/index.html');
+    const proxyHtml = readFileSync(proxyPath, 'utf8');
+
+    const dom = new JSDOM(proxyHtml, {
+      url: 'http://proxy.local/', // no query params at all
+      runScripts: 'dangerously',
+      resources: 'usable',
+      pretendToBeVisual: true,
+    });
+    const { window } = dom;
+
+    let proxyReady = false;
+    window.addEventListener('message', (event: MessageEvent) => {
+      const data = event.data as { method?: string };
+      if (data?.method === SANDBOX_PROXY_READY_METHOD) proxyReady = true;
+    });
+
+    await nextTick();
+    // Must enter raw-HTML mode: post the ready signal AND create the inner
+    // rawhtml iframe (id="root"). Before the fix it fell through to the error
+    // branch, posting nothing and creating no iframe — so these two assertions
+    // are the real guard. (We don't assert on body.textContent: in jsdom the
+    // inline <script> source lives in the body, so the error-string *literal*
+    // is present as source text whether or not the branch ran.)
+    expect(proxyReady).toBe(true);
+    expect(window.document.querySelector('iframe#root')).toBeTruthy();
+  });
 });

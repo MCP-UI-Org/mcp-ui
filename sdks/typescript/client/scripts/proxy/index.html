@@ -42,7 +42,12 @@
         }
       }
 
-      if (contentType === 'rawhtml') {
+      // Mode select: the host component (AppFrame) drives the raw-HTML path and
+      // sets NO query params — it delivers HTML via postMessage, not the URL. So
+      // raw-HTML is the DEFAULT; the external-URL path is the explicit opt-in,
+      // taken only when a `?url=` target is present. (`?contentType=rawhtml` is
+      // still honored for callers that set it, but is no longer required.)
+      if (!target || contentType === 'rawhtml') {
         // Double-iframe raw HTML mode (HTML sent via postMessage)
         const inner = document.createElement('iframe');
 
