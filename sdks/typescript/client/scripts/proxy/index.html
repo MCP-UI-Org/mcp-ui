@@ -32,6 +32,15 @@
       const contentType = params.get('contentType');
       const target = params.get('url');
 
+      // Origin of the embedding parent (the host app). Used as the targetOrigin
+      // when relaying arbitrary message data back to the parent, so a malicious
+      // site that iframes this proxy cannot receive relayed postMessages. The
+      // referrer is the parent document's URL; fall back to '*' only when it is
+      // unavailable (some privacy configurations strip it).
+      const hostOrigin = (() => {
+        try { return new URL(document.referrer).origin; } catch { return '*'; }
+      })();
+
       // Validate that the URL is a valid HTTP or HTTPS URL
       function isValidHttpUrl(string) {
         try {
@@ -42,7 +51,12 @@
         }
       }
 
-      if (contentType === 'rawhtml') {
+      // Mode select: the host component (AppFrame) drives the raw-HTML path and
+      // sets NO query params — it delivers HTML via postMessage, not the URL. So
+      // raw-HTML is the DEFAULT; the external-URL path is the explicit opt-in,
+      // taken only when a `?url=` target is present. (`?contentType=rawhtml` is
+      // still honored for callers that set it, but is no longer required.)
+      if (!target || contentType === 'rawhtml') {
         // Double-iframe raw HTML mode (HTML sent via postMessage)
         const inner = document.createElement('iframe');
 
@@ -76,11 +90,18 @@
         inner.src = 'about:blank';
         document.body.appendChild(inner);
 
-        // Wait for HTML content from parent
+        // Wait for HTML content from parent (host → proxy).
+        // The host bridge delivers it as a JSON-RPC notification
+        // { method: 'ui/notifications/sandbox-resource-ready', params: { html, csp } }
+        // (see @modelcontextprotocol/ext-apps AppBridge.sendSandboxResourceReady).
         window.addEventListener('message', (event) => {
-          if (event.source === window.parent && event.data && event.data.type === 'ui-html-content') {
-            const payload = event.data.payload || {};
-            const html = payload.html;
+          if (
+            event.source === window.parent &&
+            event.data &&
+            event.data.method === 'ui/notifications/sandbox-resource-ready'
+          ) {
+            const params = event.data.params || {};
+            const html = params.html;
             if (typeof html === 'string') {
               // Try to write immediately; if contentDocument isn't ready, queue for retry
               if (!renderHtmlInIframe(html)) {
@@ -93,13 +114,18 @@
               inner.contentWindow.postMessage(event.data, '*');
             }
           } else if (event.source === inner.contentWindow) {
-            // Relay messages from inner to parent
-            window.parent.postMessage(event.data, '*');
+            // Relay messages from inner to parent — scoped to the host origin so
+            // a cross-origin embedder cannot receive relayed guest messages.
+            window.parent.postMessage(event.data, hostOrigin);
           }
         });
 
-        // Notify parent that proxy is ready to receive HTML (distinct event)
-        window.parent.postMessage({ type: 'ui-proxy-iframe-ready' }, '*');
+        // Notify parent that the proxy is ready to receive HTML. The host waits
+        // for a message whose `.method` equals SANDBOX_PROXY_READY_METHOD
+        // ('ui/notifications/sandbox-proxy-ready') in setupSandboxProxyIframe.
+        // This signal carries no data, so a wildcard targetOrigin is safe (and
+        // the host origin isn't yet knowable if referrer is stripped).
+        window.parent.postMessage({ method: 'ui/notifications/sandbox-proxy-ready' }, '*');
       } else if (target) {
         if (!isValidHttpUrl(target)) {
           document.body.textContent = 'Error: invalid URL. Only HTTP and HTTPS URLs are allowed.';
@@ -117,8 +143,10 @@
               // listen for messages from the parent and send them to the iframe
               inner.contentWindow.postMessage(event.data, urlOrigin);
             } else if (event.source === inner.contentWindow) {
-              // listen for messages from the iframe and send them to the parent
-              window.parent.postMessage(event.data, '*');
+              // listen for messages from the iframe and send them to the parent,
+              // scoped to the host origin (not the guest's urlOrigin — the parent
+              // is the host app) so a cross-origin embedder can't receive them.
+              window.parent.postMessage(event.data, hostOrigin);
             }
           });
         }
