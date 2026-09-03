@@ -401,6 +401,7 @@ These guides will show you how to add a `mcp-ui` endpoint to an existing server,
 * **Ruby**: A barebones [demo server](/examples/ruby-server-demo) that shows how to use `mcp_ui_server` and `mcp` gems together.
 * **Python**: A simple [demo server](/examples/python-server-demo) that shows how to use the `mcp-ui-server` Python package.
 * [XMCP](https://github.com/basementstudio/xmcp/tree/main/examples/mcp-ui) - Typescript MCP framework with `mcp-ui` starter example.
+* [Skybridge](https://github.com/alpic-ai/skybridge) - Fullstack TypeScript framework for MCP Apps. Tools are registered with a React view, and the server emits it as a `ui://` resource with `mimeType: text/html;profile=mcp-app`.
 
 Drop those URLs into any MCP-compatible host to see `mcp-ui` in action. For a supported local inspector, see the [ui-inspector](https://github.com/idosal/ui-inspector).
 
