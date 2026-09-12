@@ -669,6 +669,32 @@ describe('<AppRenderer />', () => {
     });
   });
 
+  it('decodes UTF-8 HTML blobs returned by onReadResource', async () => {
+    const html = '<p>你好, café 👋</p>';
+    const onReadResource = vi.fn().mockResolvedValue({
+      contents: [
+        {
+          uri: 'ui://test/tool',
+          mimeType: 'text/html',
+          blob: Buffer.from(html, 'utf8').toString('base64'),
+        },
+      ],
+    });
+
+    render(
+      <AppRenderer
+        toolName="test-tool"
+        sandbox={defaultProps.sandbox}
+        toolResourceUri="ui://test/tool"
+        onReadResource={onReadResource}
+      />,
+    );
+
+    await waitFor(() => {
+      expect(screen.getByTestId('app-frame')).toHaveAttribute('data-html', html);
+    });
+  });
+
   describe('hostInfo prop', () => {
     it('should use default hostInfo when not provided', async () => {
       const AppBridgeMock = vi.mocked(

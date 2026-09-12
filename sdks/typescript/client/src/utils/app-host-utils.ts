@@ -141,7 +141,9 @@ export async function readToolUiResourceHtml(
   if ('text' in content && typeof content.text === 'string' && isHtml(content.mimeType)) {
     html = content.text;
   } else if ('blob' in content && typeof content.blob === 'string' && isHtml(content.mimeType)) {
-    html = atob(content.blob);
+    html = new TextDecoder().decode(
+      Uint8Array.from(atob(content.blob), (char) => char.charCodeAt(0)),
+    );
   } else {
     throw new Error('Unsupported UI resource content format: ' + JSON.stringify(content));
   }
