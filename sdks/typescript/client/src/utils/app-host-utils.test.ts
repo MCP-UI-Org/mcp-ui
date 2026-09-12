@@ -1,8 +1,37 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 
-import { SANDBOX_PROXY_READY_METHOD } from '@modelcontextprotocol/ext-apps/app-bridge';
+import {
+  RESOURCE_MIME_TYPE,
+  SANDBOX_PROXY_READY_METHOD,
+} from '@modelcontextprotocol/ext-apps/app-bridge';
+import type { Client } from '@modelcontextprotocol/sdk/client/index.js';
 
-import { setupSandboxProxyIframe, type SandboxCancelRef } from './app-host-utils';
+import {
+  readToolUiResourceHtml,
+  setupSandboxProxyIframe,
+  type SandboxCancelRef,
+} from './app-host-utils';
+
+describe('readToolUiResourceHtml', () => {
+  it.each(['<p>Hello</p>', '<p>你好, café 👋</p>'])(
+    'decodes UTF-8 HTML from a blob: %s',
+    async (html) => {
+      const client = {
+        readResource: vi.fn().mockResolvedValue({
+          contents: [
+            {
+              uri: 'ui://test/tool',
+              mimeType: RESOURCE_MIME_TYPE,
+              blob: Buffer.from(html, 'utf8').toString('base64'),
+            },
+          ],
+        }),
+      } as unknown as Client;
+
+      await expect(readToolUiResourceHtml(client, { uri: 'ui://test/tool' })).resolves.toBe(html);
+    },
+  );
+});
 
 describe('setupSandboxProxyIframe', () => {
   beforeEach(() => {

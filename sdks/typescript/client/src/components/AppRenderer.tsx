@@ -512,7 +512,9 @@ export const AppRenderer = forwardRef<AppRendererHandle, AppRendererProps>((prop
             typeof content.blob === 'string' &&
             isHtml(content.mimeType)
           ) {
-            htmlContent = atob(content.blob);
+            htmlContent = new TextDecoder().decode(
+              Uint8Array.from(atob(content.blob), (char) => char.charCodeAt(0)),
+            );
           } else {
             throw new Error('Unsupported UI resource content format: ' + JSON.stringify(content));
           }
