@@ -1,5 +1,6 @@
 import type { ClientCapabilities } from '@modelcontextprotocol/sdk/types.js';
 import { RESOURCE_MIME_TYPE } from '@modelcontextprotocol/ext-apps/app-bridge';
+import { A2UI_LEGACY_MIME_TYPE, A2UI_MIME_TYPE } from './a2ui/detection';
 
 /**
  * Extended ClientCapabilities type that includes the `extensions` field.
@@ -27,10 +28,19 @@ export const UI_EXTENSION_NAME = 'io.modelcontextprotocol/ui' as const;
 /**
  * UI extension capability configuration.
  *
- * Declares support for rendering UI resources with specific MIME types.
+ * Declares support for rendering UI resources with specific MIME types,
+ * and — via `contentMimeTypes` (ext-apps "Dynamic View Content" proposal,
+ * PR #699) — for forwarding typed view-content blocks from tool results.
+ *
+ * Advertising `contentMimeTypes` promises that content blocks marked with
+ * `_meta.ui.content` are forwarded to the renderer unmodified.
+ * AppRenderer/AppFrame already pass the full CallToolResult through
+ * untouched; hosts that pre-process `toolResult` before passing it in must
+ * not strip marked blocks.
  */
 export const UI_EXTENSION_CONFIG = {
   mimeTypes: [RESOURCE_MIME_TYPE],
+  contentMimeTypes: [A2UI_MIME_TYPE, A2UI_LEGACY_MIME_TYPE],
 } as const;
 
 /**

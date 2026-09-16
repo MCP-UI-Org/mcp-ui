@@ -6,6 +6,7 @@ import {
   UI_EXTENSION_CAPABILITIES,
 } from '../capabilities';
 import { RESOURCE_MIME_TYPE } from '@modelcontextprotocol/ext-apps/app-bridge';
+import { DEFAULT_FALLBACK_CONTENT_RENDERERS } from '../a2ui/detection';
 
 describe('UI Extension Capabilities', () => {
   it('should have correct extension name', () => {
@@ -15,6 +16,19 @@ describe('UI Extension Capabilities', () => {
   it('should include RESOURCE_MIME_TYPE in mimeTypes', () => {
     expect(UI_EXTENSION_CONFIG.mimeTypes).toContain(RESOURCE_MIME_TYPE);
     expect(UI_EXTENSION_CONFIG.mimeTypes).toEqual(['text/html;profile=mcp-app']);
+  });
+
+  it('should advertise a2ui contentMimeTypes (Dynamic View Content)', () => {
+    expect(UI_EXTENSION_CONFIG.contentMimeTypes).toEqual([
+      'application/a2ui+json',
+      'application/json+a2ui',
+    ]);
+  });
+
+  it('should advertise exactly the default fallback registry keys (no drift)', () => {
+    expect([...UI_EXTENSION_CONFIG.contentMimeTypes]).toEqual(
+      Object.keys(DEFAULT_FALLBACK_CONTENT_RENDERERS),
+    );
   });
 
   it('should structure capabilities with extension name as key', () => {

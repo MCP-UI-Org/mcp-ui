@@ -34,6 +34,8 @@ import {
 
 import { AppFrame, type SandboxConfig } from './AppFrame';
 import { getToolUiResourceUri, readToolUiResourceHtml } from '../utils/app-host-utils';
+import { getViewContentBlocks, type FallbackContentRenderers } from '../view-content';
+import { DEFAULT_FALLBACK_CONTENT_RENDERERS } from '../a2ui/detection';
 
 /**
  * Extra metadata passed to request handlers (from AppBridge).
@@ -94,6 +96,36 @@ export interface AppRendererProps {
 
   /** Host capabilities to advertise to the MCP app. If not provided, capabilities are derived from serverCapabilities. */
   hostCapabilities?: McpUiHostCapabilities;
+
+  /**
+   * Fallback content renderers, keyed by MIME type — used when the tool
+   * declares no UI resource of its own (no `_meta.ui.resourceUri`) but
+   * `toolResult` carries view-content blocks (ext-apps "Dynamic View
+   * Content", PR #699). The first view-content block whose MIME type has an
+   * entry here selects the renderer. Entries are either the renderer's
+   * self-contained HTML (the escape hatch for UMD/no-dynamic-import setups)
+   * or an async loader resolving to it, so the renderer stays out of the
+   * main bundle.
+   *
+   * - `undefined` (default): {@link DEFAULT_FALLBACK_CONTENT_RENDERERS} —
+   *   the bundled generic A2UI renderer, lazily loaded, for
+   *   `application/a2ui+json` (and the legacy `application/json+a2ui`).
+   * - `{}`: disable all fallback renderers.
+   * - A provided registry *replaces* the default; spread
+   *   `DEFAULT_FALLBACK_CONTENT_RENDERERS` to extend it instead.
+   *
+   * The registry keys also gate legacy detection: unmarked embedded
+   * resources (no `_meta.ui.content`) count as view content only when their
+   * MIME type is a key of the active registry.
+   *
+   * Tools that declare their own renderer are never affected: per the spec,
+   * marked payloads are routed implicitly to the calling tool's declared
+   * `_meta.ui.resourceUri` view, and this registry only applies when there
+   * is none. If `toolResult` arrives after mount, an initial "no UI
+   * resource" error may surface briefly and is superseded once view content
+   * is detected.
+   */
+  fallbackContentRenderers?: FallbackContentRenderers;
 
   /** Handler for open-link requests from the guest UI */
   onOpenLink?: (
@@ -278,6 +310,7 @@ export const AppRenderer = forwardRef<AppRendererHandle, AppRendererProps>((prop
     hostContext,
     hostInfo,
     hostCapabilities,
+    fallbackContentRenderers,
     onMessage,
     onOpenLink,
     onLoggingMessage,
@@ -296,6 +329,25 @@ export const AppRenderer = forwardRef<AppRendererHandle, AppRendererProps>((prop
   const [html, setHtml] = useState<string | null>(htmlProp ?? null);
   const [error, setError] = useState<Error | null>(null);
 
+  // Fallback content renderers (Dynamic View Content), derived to primitives
+  // so Effect 2's dependencies stay stable across inline-object props and
+  // toolResult identity changes; the registry itself is read through a ref.
+  const contentRenderers = fallbackContentRenderers ?? DEFAULT_FALLBACK_CONTENT_RENDERERS;
+  const contentRendererMimeTypes = Object.keys(contentRenderers);
+  const viewContentBlocks = getViewContentBlocks(toolResult, {
+    unmarkedMimeTypes: contentRendererMimeTypes,
+  });
+  // Renderer resolution step 4: the first view-content block whose MIME has
+  // a registry entry.
+  const fallbackMimeType = viewContentBlocks
+    .map((block) => block.resource.mimeType)
+    .find(
+      (mimeType) => typeof mimeType === 'string' && contentRendererMimeTypes.includes(mimeType),
+    );
+  // Keys as a primitive: Effect 2 re-runs when the active registry's
+  // coverage changes, not on inline-object identity churn.
+  const contentRendererMimeTypesKey = contentRendererMimeTypes.join(',');
+
   // Refs for callbacks
   const onMessageRef = useRef(onMessage);
   const onOpenLinkRef = useRef(onOpenLink);
@@ -308,6 +360,18 @@ export const AppRenderer = forwardRef<AppRendererHandle, AppRendererProps>((prop
   const onReadResourceRef = useRef(onReadResource);
   const onListPromptsRef = useRef(onListPrompts);
   const onFallbackRequestRef = useRef(onFallbackRequest);
+  // The registry lives in a ref so inline-object props don't churn Effect 2;
+  // the effect depends on primitives derived from it instead.
+  const contentRenderersRef = useRef(contentRenderers);
+  // Set once Effect 2 resolves HTML from a tool-declared renderer, keyed by
+  // the inputs that determined it. Later re-runs triggered only by the
+  // fallback dependencies (a toolResult arriving after mount, registry
+  // changes) must not re-fetch — or remount — an already-resolved renderer.
+  const declaredRendererSourceRef = useRef<{
+    client: typeof client;
+    toolName: typeof toolName;
+    toolResourceUri: typeof toolResourceUri;
+  } | null>(null);
 
   useEffect(() => {
     onMessageRef.current = onMessage;
@@ -321,6 +385,7 @@ export const AppRenderer = forwardRef<AppRendererHandle, AppRendererProps>((prop
     onReadResourceRef.current = onReadResource;
     onListPromptsRef.current = onListPrompts;
     onFallbackRequestRef.current = onFallbackRequest;
+    contentRenderersRef.current = contentRenderers;
   });
 
   // Expose send methods via ref for Host → Guest notifications
@@ -357,11 +422,7 @@ export const AppRenderer = forwardRef<AppRendererHandle, AppRendererProps>((prop
           serverResources: serverCapabilities?.resources,
         };
 
-        const bridge = new AppBridge(
-          client ?? null,
-          finalHostInfo,
-          finalHostCapabilities,
-        );
+        const bridge = new AppBridge(client ?? null, finalHostInfo, finalHostCapabilities);
 
         currentBridge = bridge;
 
@@ -415,10 +476,7 @@ export const AppRenderer = forwardRef<AppRendererHandle, AppRendererProps>((prop
           if (onFallbackRequestRef.current) {
             return onFallbackRequestRef.current(request, extra);
           }
-          throw new McpError(
-            ErrorCode.MethodNotFound,
-            `No handler for method: ${request.method}`,
-          );
+          throw new McpError(ErrorCode.MethodNotFound, `No handler for method: ${request.method}`);
         };
 
         if (!mounted) return;
@@ -448,27 +506,102 @@ export const AppRenderer = forwardRef<AppRendererHandle, AppRendererProps>((prop
   // Effect 2: Fetch HTML if not provided
   useEffect(() => {
     if (htmlProp) {
+      declaredRendererSourceRef.current = null;
       setHtml(htmlProp);
       return;
     }
+
+    const resolved = declaredRendererSourceRef.current;
+    if (
+      resolved &&
+      resolved.client === client &&
+      resolved.toolName === toolName &&
+      resolved.toolResourceUri === toolResourceUri
+    ) {
+      // Tool-declared renderer already resolved for these inputs; only the
+      // fallback dependencies changed, which cannot affect it.
+      return;
+    }
+    declaredRendererSourceRef.current = null;
 
     // Determine if we can fetch HTML
     const canFetchWithClient = !!client;
     const canFetchWithCallback = !!toolResourceUri && !!onReadResourceRef.current;
 
-    if (!canFetchWithClient && !canFetchWithCallback) {
-      setError(
-        new Error(
-          "Either 'html' prop, 'client', or ('toolResourceUri' + 'onReadResource') must be provided to fetch UI resource",
-        ),
-      );
-      return;
-    }
-
     let mounted = true;
+
+    // Reads a ui:// resource's HTML — via the client when available,
+    // otherwise via the onReadResource callback.
+    const readHtmlByUri = async (uri: string): Promise<string> => {
+      console.log(`[AppRenderer] Reading resource HTML from: ${uri}`);
+      if (client) {
+        return readToolUiResourceHtml(client, { uri });
+      }
+      if (onReadResourceRef.current) {
+        const result = await onReadResourceRef.current({ uri }, {} as RequestHandlerExtra);
+        if (!result.contents || result.contents.length !== 1) {
+          throw new Error('Unsupported UI resource content length: ' + result.contents?.length);
+        }
+        const content = result.contents[0];
+        const isHtml = (t?: string) => t === RESOURCE_MIME_TYPE;
+
+        if ('text' in content && typeof content.text === 'string' && isHtml(content.mimeType)) {
+          return content.text;
+        }
+        if ('blob' in content && typeof content.blob === 'string' && isHtml(content.mimeType)) {
+          return atob(content.blob);
+        }
+        throw new Error('Unsupported UI resource content format: ' + JSON.stringify(content));
+      }
+      throw new Error('No way to read resource HTML');
+    };
+
+    // Resolves a fallbackContentRenderers registry entry to renderer HTML.
+    const resolveFallbackHtml = async (mimeType: string): Promise<string> => {
+      const entry = contentRenderersRef.current[mimeType];
+      if (typeof entry === 'string') {
+        return entry;
+      }
+      try {
+        return await entry();
+      } catch (err) {
+        throw new Error(
+          `Failed to load the fallback content renderer for MIME type '${mimeType}'. ` +
+            'If your bundler cannot resolve dynamic imports (e.g. UMD builds), pass the ' +
+            'renderer HTML as a string entry in the fallbackContentRenderers prop.',
+          { cause: err },
+        );
+      }
+    };
+
+    // Renderer resolution for view content when the tool declares no
+    // renderer of its own: the fallbackContentRenderers registry. Returns
+    // true if it handled HTML resolution (superseding any earlier error).
+    const applyFallback = async (): Promise<boolean> => {
+      if (fallbackMimeType) {
+        console.log(`[AppRenderer] Injecting fallback content renderer for ${fallbackMimeType}`);
+        const fallbackHtml = await resolveFallbackHtml(fallbackMimeType);
+        if (!mounted) return true;
+        setError(null);
+        setHtml(fallbackHtml);
+        return true;
+      }
+      return false;
+    };
 
     const fetchHtml = async () => {
       try {
+        if (!canFetchWithClient && !canFetchWithCallback) {
+          if (await applyFallback()) return;
+          if (!mounted) return;
+          setError(
+            new Error(
+              "Either 'html' prop, 'client', or ('toolResourceUri' + 'onReadResource') must be provided to fetch UI resource",
+            ),
+          );
+          return;
+        }
+
         // Get resource URI
         let uri: string;
         if (toolResourceUri) {
@@ -478,6 +611,9 @@ export const AppRenderer = forwardRef<AppRendererHandle, AppRendererProps>((prop
           console.log(`[AppRenderer] Fetching resource URI for tool: ${toolName}`);
           const info = await getToolUiResourceUri(client, toolName);
           if (!info) {
+            // Tool predeclares no renderer view — view-content fallbacks
+            // take over instead of erroring out.
+            if (await applyFallback()) return;
             throw new Error(
               `Tool ${toolName} has no UI resource (no ui/resourceUri in tool._meta)`,
             );
@@ -490,38 +626,11 @@ export const AppRenderer = forwardRef<AppRendererHandle, AppRendererProps>((prop
 
         if (!mounted) return;
 
-        // Read HTML content - use client if available, otherwise use onReadResource callback
-        console.log(`[AppRenderer] Reading resource HTML from: ${uri}`);
-        let htmlContent: string;
-
-        if (client) {
-          htmlContent = await readToolUiResourceHtml(client, { uri });
-        } else if (onReadResourceRef.current) {
-          // Use the onReadResource callback to fetch the HTML
-          const result = await onReadResourceRef.current({ uri }, {} as RequestHandlerExtra);
-          if (!result.contents || result.contents.length !== 1) {
-            throw new Error('Unsupported UI resource content length: ' + result.contents?.length);
-          }
-          const content = result.contents[0];
-          const isHtml = (t?: string) => t === RESOURCE_MIME_TYPE;
-
-          if ('text' in content && typeof content.text === 'string' && isHtml(content.mimeType)) {
-            htmlContent = content.text;
-          } else if (
-            'blob' in content &&
-            typeof content.blob === 'string' &&
-            isHtml(content.mimeType)
-          ) {
-            htmlContent = atob(content.blob);
-          } else {
-            throw new Error('Unsupported UI resource content format: ' + JSON.stringify(content));
-          }
-        } else {
-          throw new Error('No way to read resource HTML');
-        }
+        const htmlContent = await readHtmlByUri(uri);
 
         if (!mounted) return;
 
+        declaredRendererSourceRef.current = { client, toolName, toolResourceUri };
         setHtml(htmlContent);
       } catch (err) {
         if (!mounted) return;
@@ -536,7 +645,7 @@ export const AppRenderer = forwardRef<AppRendererHandle, AppRendererProps>((prop
     return () => {
       mounted = false;
     };
-  }, [client, toolName, toolResourceUri, htmlProp]);
+  }, [client, toolName, toolResourceUri, htmlProp, fallbackMimeType, contentRendererMimeTypesKey]);
 
   // Effect 3: Sync host context when it changes
   useEffect(() => {

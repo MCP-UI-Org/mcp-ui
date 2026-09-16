@@ -189,6 +189,10 @@ export default withMermaid(
                 text: 'AppRenderer',
                 link: '/guide/client/app-renderer',
               },
+              {
+                text: 'Dynamic View Content (A2UI)',
+                link: '/guide/client/a2ui',
+              },
             ],
           },
         ],

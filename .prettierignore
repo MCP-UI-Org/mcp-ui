@@ -19,6 +19,7 @@ pnpm-lock.yaml
 *.bundled.ts
 docs/src/.vitepress/cache
 extensions/vscode/out
+sdks/typescript/client/src/a2ui/a2ui-renderer.html
 
 *.log
 *.md 
