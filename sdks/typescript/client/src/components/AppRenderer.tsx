@@ -363,6 +363,15 @@ export const AppRenderer = forwardRef<AppRendererHandle, AppRendererProps>((prop
   // The registry lives in a ref so inline-object props don't churn Effect 2;
   // the effect depends on primitives derived from it instead.
   const contentRenderersRef = useRef(contentRenderers);
+  // Set once Effect 2 resolves HTML from a tool-declared renderer, keyed by
+  // the inputs that determined it. Later re-runs triggered only by the
+  // fallback dependencies (a toolResult arriving after mount, registry
+  // changes) must not re-fetch — or remount — an already-resolved renderer.
+  const declaredRendererSourceRef = useRef<{
+    client: typeof client;
+    toolName: typeof toolName;
+    toolResourceUri: typeof toolResourceUri;
+  } | null>(null);
 
   useEffect(() => {
     onMessageRef.current = onMessage;
@@ -497,9 +506,23 @@ export const AppRenderer = forwardRef<AppRendererHandle, AppRendererProps>((prop
   // Effect 2: Fetch HTML if not provided
   useEffect(() => {
     if (htmlProp) {
+      declaredRendererSourceRef.current = null;
       setHtml(htmlProp);
       return;
     }
+
+    const resolved = declaredRendererSourceRef.current;
+    if (
+      resolved &&
+      resolved.client === client &&
+      resolved.toolName === toolName &&
+      resolved.toolResourceUri === toolResourceUri
+    ) {
+      // Tool-declared renderer already resolved for these inputs; only the
+      // fallback dependencies changed, which cannot affect it.
+      return;
+    }
+    declaredRendererSourceRef.current = null;
 
     // Determine if we can fetch HTML
     const canFetchWithClient = !!client;
@@ -607,6 +630,7 @@ export const AppRenderer = forwardRef<AppRendererHandle, AppRendererProps>((prop
 
         if (!mounted) return;
 
+        declaredRendererSourceRef.current = { client, toolName, toolResourceUri };
         setHtml(htmlContent);
       } catch (err) {
         if (!mounted) return;

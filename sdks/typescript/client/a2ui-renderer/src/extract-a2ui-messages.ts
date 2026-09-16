@@ -42,9 +42,12 @@ export function extractA2uiMessages(content: unknown): A2uiMessage[] {
 
     try {
       const parsed: unknown = JSON.parse(text);
-      if (parsed && typeof parsed === 'object') {
-        messages.push(...((Array.isArray(parsed) ? parsed : [parsed]) as A2uiMessage[]));
-      }
+      const entries: unknown[] = Array.isArray(parsed) ? parsed : [parsed];
+      // MessageProcessor dispatches with the `in` operator, which throws on
+      // null/scalar values — drop them here.
+      messages.push(
+        ...(entries.filter((entry) => entry && typeof entry === 'object') as A2uiMessage[]),
+      );
     } catch (err) {
       console.error('Failed to parse A2UI payload:', err);
     }

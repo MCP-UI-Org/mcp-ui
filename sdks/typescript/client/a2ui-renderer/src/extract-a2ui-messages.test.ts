@@ -58,6 +58,11 @@ describe('extractA2uiMessages', () => {
     expect(extractA2uiMessages(blocks)).toEqual([surfaceMessage, updateMessage]);
   });
 
+  it('drops null and scalar entries inside array payloads', () => {
+    const block = resourceBlock({ text: JSON.stringify([null, 42, 'text', surfaceMessage]) });
+    expect(extractA2uiMessages([block])).toEqual([surfaceMessage]);
+  });
+
   it('ignores non-resource blocks, wrong MIME types, and invalid payloads', () => {
     const blocks = [
       { type: 'text', text: 'hello' },

@@ -951,6 +951,27 @@ describe('<AppRenderer />', () => {
       });
     });
 
+    it('does not re-fetch a tool-declared renderer when an a2ui toolResult arrives late', async () => {
+      vi.mocked(appHostUtils.getToolUiResourceUri).mockResolvedValue({ uri: 'ui://test-tool' });
+
+      const { rerender } = render(<AppRenderer {...defaultProps} />);
+
+      await waitFor(() => {
+        expect(screen.getByTestId('app-frame')).toHaveAttribute(
+          'data-html',
+          '<html><body>Test Tool UI</body></html>',
+        );
+      });
+
+      rerender(<AppRenderer {...defaultProps} toolResult={a2uiToolResult} />);
+
+      await waitFor(() => {
+        expect(screen.getByTestId('tool-result')).toBeInTheDocument();
+      });
+      expect(appHostUtils.getToolUiResourceUri).toHaveBeenCalledTimes(1);
+      expect(appHostUtils.readToolUiResourceHtml).toHaveBeenCalledTimes(1);
+    });
+
     it('prefers the toolResourceUri prop over the fallback steps', async () => {
       render(
         <AppRenderer
