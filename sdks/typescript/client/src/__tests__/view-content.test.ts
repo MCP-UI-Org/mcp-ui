@@ -1,15 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import type { CallToolResult } from '@modelcontextprotocol/sdk/types.js';
-import {
-  getViewContentBlocks,
-  getViewContentRendererUri,
-  isViewContentBlock,
-} from '../view-content';
+import { getViewContentBlocks, isViewContentBlock } from '../view-content';
 
-function block(
-  overrides: Record<string, unknown> = {},
-  meta?: Record<string, unknown>,
-) {
+function block(overrides: Record<string, unknown> = {}, meta?: Record<string, unknown>) {
   return {
     type: 'resource',
     resource: {
@@ -22,7 +15,10 @@ function block(
   };
 }
 
-function markedBlock(overrides: Record<string, unknown> = {}, content: Record<string, unknown> = {}) {
+function markedBlock(
+  overrides: Record<string, unknown> = {},
+  content: Record<string, unknown> = {},
+) {
   return block(overrides, { ui: { content } });
 }
 
@@ -33,7 +29,8 @@ function result(...content: unknown[]): CallToolResult {
 describe('isViewContentBlock', () => {
   it('accepts embedded resources marked with _meta.ui.content', () => {
     expect(isViewContentBlock(markedBlock())).toBe(true);
-    expect(isViewContentBlock(markedBlock({}, { rendererUri: 'ui://x' }))).toBe(true);
+    // Unknown future marker fields are tolerated (forward-compatible slot).
+    expect(isViewContentBlock(markedBlock({}, { future: 'field' }))).toBe(true);
   });
 
   it('rejects unmarked blocks and non-resources', () => {
@@ -47,25 +44,6 @@ describe('isViewContentBlock', () => {
   it('rejects non-object markers', () => {
     expect(isViewContentBlock(block({}, { ui: { content: 'yes' } }))).toBe(false);
     expect(isViewContentBlock(block({}, { ui: { content: null } }))).toBe(false);
-  });
-});
-
-describe('getViewContentRendererUri', () => {
-  it('extracts rendererUri from marked blocks', () => {
-    expect(getViewContentRendererUri(markedBlock({}, { rendererUri: 'ui://srv/renderer' }))).toBe(
-      'ui://srv/renderer',
-    );
-  });
-
-  it('is undefined when omitted (payload targets the tool renderer)', () => {
-    expect(getViewContentRendererUri(markedBlock())).toBeUndefined();
-  });
-
-  it('is undefined for unmarked blocks, non-string values, and non-blocks', () => {
-    expect(getViewContentRendererUri(block())).toBeUndefined();
-    expect(getViewContentRendererUri(markedBlock({}, { rendererUri: 42 }))).toBeUndefined();
-    expect(getViewContentRendererUri(null)).toBeUndefined();
-    expect(getViewContentRendererUri('resource')).toBeUndefined();
   });
 });
 

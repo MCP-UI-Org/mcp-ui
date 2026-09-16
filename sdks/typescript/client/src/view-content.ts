@@ -6,6 +6,11 @@ import type { CallToolResult, EmbeddedResource } from '@modelcontextprotocol/sdk
 // release. Semantics here intentionally match that proposal, plus the
 // `unmarkedMimeTypes` allowance for legacy servers that don't set
 // _meta.ui.content (the spec itself has no marker-less inference).
+//
+// Per the spec, `_meta.ui.content` is an empty marker: routing is implicit
+// (payloads go to the calling tool's `_meta.ui.resourceUri` view) and the
+// view's declared `contentMimeTypes` is a validation guardrail, not a
+// routing mechanism. Per-payload renderer pointers are explicitly rejected.
 
 /**
  * A fallback renderer registry entry: either the renderer's self-contained
@@ -36,32 +41,15 @@ function isEmbeddedResourceBlock(block: unknown): block is ContentBlockLike {
   );
 }
 
-function getViewContentMarker(block: unknown): Record<string, unknown> | undefined {
-  if (!isEmbeddedResourceBlock(block)) return undefined;
-  const content = block._meta?.ui?.content;
-  return typeof content === 'object' && content !== null
-    ? (content as Record<string, unknown>)
-    : undefined;
-}
-
 /**
  * True when a content block is an embedded resource marked as view content
  * per the "Dynamic View Content" spec proposal (ext-apps PR #699), i.e. it
- * carries `_meta.ui.content`.
+ * carries an object-valued `_meta.ui.content` marker.
  */
 export function isViewContentBlock(block: unknown): block is EmbeddedResource {
-  return getViewContentMarker(block) !== undefined;
-}
-
-/**
- * Returns the renderer view a marked view-content block targets
- * (`_meta.ui.content.rendererUri`), or undefined when the block is unmarked
- * or targets the calling tool's own `_meta.ui.resourceUri` (the spec default
- * when `rendererUri` is omitted).
- */
-export function getViewContentRendererUri(block: unknown): string | undefined {
-  const rendererUri = getViewContentMarker(block)?.rendererUri;
-  return typeof rendererUri === 'string' ? rendererUri : undefined;
+  if (!isEmbeddedResourceBlock(block)) return false;
+  const content = block._meta?.ui?.content;
+  return typeof content === 'object' && content !== null;
 }
 
 export interface GetViewContentBlocksOptions {

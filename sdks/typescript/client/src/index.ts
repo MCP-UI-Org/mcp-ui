@@ -14,7 +14,6 @@ export {
 export {
   isViewContentBlock,
   getViewContentBlocks,
-  getViewContentRendererUri,
   type FallbackContentRenderer,
   type FallbackContentRenderers,
   type GetViewContentBlocksOptions,

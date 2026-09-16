@@ -34,11 +34,7 @@ import {
 
 import { AppFrame, type SandboxConfig } from './AppFrame';
 import { getToolUiResourceUri, readToolUiResourceHtml } from '../utils/app-host-utils';
-import {
-  getViewContentBlocks,
-  getViewContentRendererUri,
-  type FallbackContentRenderers,
-} from '../view-content';
+import { getViewContentBlocks, type FallbackContentRenderers } from '../view-content';
 import { DEFAULT_FALLBACK_CONTENT_RENDERERS } from '../a2ui/detection';
 
 /**
@@ -122,11 +118,12 @@ export interface AppRendererProps {
    * resources (no `_meta.ui.content`) count as view content only when their
    * MIME type is a key of the active registry.
    *
-   * Tools that declare their own renderer are never affected, and a marked
-   * block's `_meta.ui.content.rendererUri` (a `ui://` renderer resource)
-   * takes precedence over this registry. If `toolResult` arrives after
-   * mount, an initial "no UI resource" error may surface briefly and is
-   * superseded once view content is detected.
+   * Tools that declare their own renderer are never affected: per the spec,
+   * marked payloads are routed implicitly to the calling tool's declared
+   * `_meta.ui.resourceUri` view, and this registry only applies when there
+   * is none. If `toolResult` arrives after mount, an initial "no UI
+   * resource" error may surface briefly and is superseded once view content
+   * is detected.
    */
   fallbackContentRenderers?: FallbackContentRenderers;
 
@@ -340,11 +337,8 @@ export const AppRenderer = forwardRef<AppRendererHandle, AppRendererProps>((prop
   const viewContentBlocks = getViewContentBlocks(toolResult, {
     unmarkedMimeTypes: contentRendererMimeTypes,
   });
-  // Renderer resolution step 4: the first marked block naming a ui://
-  // renderer view. Step 5: the first block whose MIME has a registry entry.
-  const fallbackRendererUri = viewContentBlocks
-    .map(getViewContentRendererUri)
-    .find((uri) => uri !== undefined);
+  // Renderer resolution step 4: the first view-content block whose MIME has
+  // a registry entry.
   const fallbackMimeType = viewContentBlocks
     .map((block) => block.resource.mimeType)
     .find(
@@ -419,11 +413,7 @@ export const AppRenderer = forwardRef<AppRendererHandle, AppRendererProps>((prop
           serverResources: serverCapabilities?.resources,
         };
 
-        const bridge = new AppBridge(
-          client ?? null,
-          finalHostInfo,
-          finalHostCapabilities,
-        );
+        const bridge = new AppBridge(client ?? null, finalHostInfo, finalHostCapabilities);
 
         currentBridge = bridge;
 
@@ -477,10 +467,7 @@ export const AppRenderer = forwardRef<AppRendererHandle, AppRendererProps>((prop
           if (onFallbackRequestRef.current) {
             return onFallbackRequestRef.current(request, extra);
           }
-          throw new McpError(
-            ErrorCode.MethodNotFound,
-            `No handler for method: ${request.method}`,
-          );
+          throw new McpError(ErrorCode.MethodNotFound, `No handler for method: ${request.method}`);
         };
 
         if (!mounted) return;
@@ -565,24 +552,11 @@ export const AppRenderer = forwardRef<AppRendererHandle, AppRendererProps>((prop
     };
 
     // Renderer resolution for view content when the tool declares no
-    // renderer of its own: a marked block's rendererUri first (spec-native),
-    // then the fallbackContentRenderers registry. Returns true if it handled
-    // HTML resolution (superseding any earlier error).
+    // renderer of its own: the fallbackContentRenderers registry. Returns
+    // true if it handled HTML resolution (superseding any earlier error).
     const applyFallback = async (): Promise<boolean> => {
-      if (fallbackRendererUri && (client || onReadResourceRef.current)) {
-        console.log(
-          `[AppRenderer] Using view-content rendererUri: ${fallbackRendererUri}`,
-        );
-        const rendererHtml = await readHtmlByUri(fallbackRendererUri);
-        if (!mounted) return true;
-        setError(null);
-        setHtml(rendererHtml);
-        return true;
-      }
       if (fallbackMimeType) {
-        console.log(
-          `[AppRenderer] Injecting fallback content renderer for ${fallbackMimeType}`,
-        );
+        console.log(`[AppRenderer] Injecting fallback content renderer for ${fallbackMimeType}`);
         const fallbackHtml = await resolveFallbackHtml(fallbackMimeType);
         if (!mounted) return true;
         setError(null);
@@ -647,15 +621,7 @@ export const AppRenderer = forwardRef<AppRendererHandle, AppRendererProps>((prop
     return () => {
       mounted = false;
     };
-  }, [
-    client,
-    toolName,
-    toolResourceUri,
-    htmlProp,
-    fallbackRendererUri,
-    fallbackMimeType,
-    contentRendererMimeTypesKey,
-  ]);
+  }, [client, toolName, toolResourceUri, htmlProp, fallbackMimeType, contentRendererMimeTypesKey]);
 
   // Effect 3: Sync host context when it changes
   useEffect(() => {

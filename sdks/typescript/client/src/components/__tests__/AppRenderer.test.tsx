@@ -536,7 +536,10 @@ describe('<AppRenderer />', () => {
       };
       const mockExtra = createMockExtra();
 
-      const result = await mockBridgeInstance?.fallbackRequestHandler?.(mockRequest, mockExtra as never);
+      const result = await mockBridgeInstance?.fallbackRequestHandler?.(
+        mockRequest,
+        mockExtra as never,
+      );
 
       expect(onFallbackRequest).toHaveBeenCalledWith(mockRequest, mockExtra);
       expect(result).toEqual({ clipboard: 'written' });
@@ -585,7 +588,10 @@ describe('<AppRenderer />', () => {
       };
       const mockExtra = createMockExtra();
 
-      const result = await mockBridgeInstance?.fallbackRequestHandler?.(mockRequest, mockExtra as never);
+      const result = await mockBridgeInstance?.fallbackRequestHandler?.(
+        mockRequest,
+        mockExtra as never,
+      );
 
       // Should use the second (latest) handler
       expect(firstHandler).not.toHaveBeenCalled();
@@ -714,11 +720,7 @@ describe('<AppRenderer />', () => {
         expect(screen.getByTestId('app-frame')).toBeInTheDocument();
       });
 
-      expect(AppBridgeMock).toHaveBeenCalledWith(
-        mockClient,
-        customHostInfo,
-        expect.any(Object),
-      );
+      expect(AppBridgeMock).toHaveBeenCalledWith(mockClient, customHostInfo, expect.any(Object));
     });
   });
 
@@ -734,15 +736,11 @@ describe('<AppRenderer />', () => {
         expect(screen.getByTestId('app-frame')).toBeInTheDocument();
       });
 
-      expect(AppBridgeMock).toHaveBeenCalledWith(
-        mockClient,
-        expect.any(Object),
-        {
-          openLinks: {},
-          serverTools: {},
-          serverResources: {},
-        },
-      );
+      expect(AppBridgeMock).toHaveBeenCalledWith(mockClient, expect.any(Object), {
+        openLinks: {},
+        serverTools: {},
+        serverResources: {},
+      });
     });
 
     it('should use provided hostCapabilities', async () => {
@@ -775,10 +773,7 @@ describe('<AppRenderer />', () => {
     const CUSTOM_MIME = 'application/vnd.custom-view+json';
     const CUSTOM_RENDERER_HTML = '<!doctype html><html><body>custom renderer</body></html>';
 
-    function viewContentBlock(
-      mimeType: string,
-      marker?: Record<string, unknown>,
-    ) {
+    function viewContentBlock(mimeType: string, marker?: Record<string, unknown>) {
       return {
         type: 'resource' as const,
         resource: {
@@ -862,10 +857,7 @@ describe('<AppRenderer />', () => {
       );
 
       await waitFor(() => {
-        expect(screen.getByTestId('app-frame')).toHaveAttribute(
-          'data-html',
-          CUSTOM_RENDERER_HTML,
-        );
+        expect(screen.getByTestId('app-frame')).toHaveAttribute('data-html', CUSTOM_RENDERER_HTML);
       });
     });
 
@@ -881,10 +873,7 @@ describe('<AppRenderer />', () => {
       );
 
       await waitFor(() => {
-        expect(screen.getByTestId('app-frame')).toHaveAttribute(
-          'data-html',
-          CUSTOM_RENDERER_HTML,
-        );
+        expect(screen.getByTestId('app-frame')).toHaveAttribute('data-html', CUSTOM_RENDERER_HTML);
       });
       expect(loader).toHaveBeenCalled();
     });
@@ -922,16 +911,16 @@ describe('<AppRenderer />', () => {
       );
 
       await waitFor(() => {
-        expect(screen.getByTestId('app-frame')).toHaveAttribute(
-          'data-html',
-          CUSTOM_RENDERER_HTML,
-        );
+        expect(screen.getByTestId('app-frame')).toHaveAttribute('data-html', CUSTOM_RENDERER_HTML);
       });
     });
 
     it('does not inject for marked blocks whose MIME has no registry entry', async () => {
       render(
-        <AppRenderer {...defaultProps} toolResult={{ content: [viewContentBlock(CUSTOM_MIME, {})] }} />,
+        <AppRenderer
+          {...defaultProps}
+          toolResult={{ content: [viewContentBlock(CUSTOM_MIME, {})] }}
+        />,
       );
 
       await waitFor(() => {
@@ -939,75 +928,14 @@ describe('<AppRenderer />', () => {
       });
     });
 
-    it('reads the renderer from a marked block rendererUri (client path)', async () => {
-      vi.mocked(appHostUtils.readToolUiResourceHtml).mockResolvedValue(
-        '<html><body>External renderer</body></html>',
-      );
-
-      render(
-        <AppRenderer
-          {...defaultProps}
-          toolResult={{
-            content: [
-              viewContentBlock('application/a2ui+json', { rendererUri: 'ui://ext/renderer' }),
-            ],
-          }}
-        />,
-      );
-
-      await waitFor(() => {
-        expect(screen.getByTestId('app-frame')).toHaveAttribute(
-          'data-html',
-          '<html><body>External renderer</body></html>',
-        );
-      });
-      // rendererUri (spec-native) wins over the registry entry for the MIME.
-      expect(appHostUtils.readToolUiResourceHtml).toHaveBeenCalledWith(mockClient, {
-        uri: 'ui://ext/renderer',
-      });
-    });
-
-    it('reads the renderer from rendererUri via onReadResource when no client', async () => {
-      const onReadResource = vi.fn().mockResolvedValue({
-        contents: [
-          {
-            uri: 'ui://ext/renderer',
-            mimeType: 'text/html',
-            text: '<html><body>External renderer</body></html>',
-          },
-        ],
-      });
-
-      render(
-        <AppRenderer
-          toolName="test-tool"
-          sandbox={{ url: new URL('http://localhost:8081/sandbox.html') }}
-          toolResult={{
-            content: [viewContentBlock(CUSTOM_MIME, { rendererUri: 'ui://ext/renderer' })],
-          }}
-          onReadResource={onReadResource}
-        />,
-      );
-
-      await waitFor(() => {
-        expect(screen.getByTestId('app-frame')).toHaveAttribute(
-          'data-html',
-          '<html><body>External renderer</body></html>',
-        );
-      });
-      expect(onReadResource).toHaveBeenCalledWith({ uri: 'ui://ext/renderer' }, expect.anything());
-    });
-
-    it('prefers the tool-declared renderer over rendererUri and the registry', async () => {
+    it('prefers the tool-declared renderer over the registry', async () => {
       vi.mocked(appHostUtils.getToolUiResourceUri).mockResolvedValue({ uri: 'ui://test-tool' });
 
       render(
         <AppRenderer
           {...defaultProps}
           toolResult={{
-            content: [
-              viewContentBlock('application/a2ui+json', { rendererUri: 'ui://ext/renderer' }),
-            ],
+            content: [viewContentBlock('application/a2ui+json', {})],
           }}
         />,
       );

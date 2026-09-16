@@ -10,10 +10,9 @@ Per the ext-apps ["Dynamic View Content" proposal](https://github.com/modelconte
 
 1. The `html` prop (full override).
 2. The `toolResourceUri` prop → read that resource.
-3. The tool's predeclared `_meta.ui.resourceUri` (via the client) — a declared tool renderer always wins.
-4. **Spec-native view-content targeting**: the first *marked* view-content block carrying `_meta.ui.content.rendererUri` → that `ui://` resource is read as the renderer (via the client, or `onReadResource` when no client is present).
-5. **Fallback renderer registry**: the first view-content block whose MIME type has an entry in the active `fallbackContentRenderers` registry → that entry's HTML is injected.
-6. Otherwise, the usual "tool has no UI resource" error.
+3. The tool's predeclared `_meta.ui.resourceUri` (via the client) — a declared tool renderer always wins. This is the spec's routing rule: marked payloads are delivered implicitly to the calling tool's view, and the view's declared `contentMimeTypes` is a validation guardrail (what it can parse), not a routing mechanism.
+4. **Fallback renderer registry**: the first view-content block whose MIME type has an entry in the active `fallbackContentRenderers` registry → that entry's HTML is injected.
+5. Otherwise, the usual "tool has no UI resource" error.
 
 ## The `fallbackContentRenderers` prop
 
@@ -61,7 +60,6 @@ Generic (Dynamic View Content):
 import {
   isViewContentBlock, // _meta.ui.content marker present
   getViewContentBlocks, // marked blocks (+ opt-in unmarked MIMEs), in content order
-  getViewContentRendererUri, // _meta.ui.content.rendererUri, if any
 } from '@mcp-ui/client';
 ```
 
@@ -95,7 +93,7 @@ It receives the tool result through the standard `ui/notifications/tool-result` 
 
 ## Host capability advertisement
 
-`UI_EXTENSION_CONFIG` advertises `contentMimeTypes: ['application/a2ui+json', 'application/json+a2ui']` (the Dynamic View Content host capability), kept in lockstep with `Object.keys(DEFAULT_FALLBACK_CONTENT_RENDERERS)` by a test. This promises that content blocks marked with `_meta.ui.content` are forwarded to renderers unmodified — AppRenderer/AppFrame already pass the full `CallToolResult` through untouched, so just make sure any pre-processing you do on `toolResult` doesn't strip those blocks.
+`UI_EXTENSION_CONFIG` advertises `contentMimeTypes: ['application/a2ui+json', 'application/json+a2ui']` (the Dynamic View Content host capability), kept in lockstep with `Object.keys(DEFAULT_FALLBACK_CONTENT_RENDERERS)` by a test. Advertising a non-empty `contentMimeTypes` is what negotiates Dynamic View Content support with the server. It promises that content blocks marked with `_meta.ui.content` are forwarded to renderers unmodified — AppRenderer/AppFrame already pass the full `CallToolResult` through untouched, so just make sure any pre-processing you do on `toolResult` doesn't strip those blocks.
 
 ## Regenerating the artifact (contributors)
 
