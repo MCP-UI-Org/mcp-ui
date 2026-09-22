@@ -185,8 +185,8 @@ app.post('/mcp', async (req, res) => {
 <body>
   <div class="container">
     <div class="card">
-      <h1>🔌 MCP Apps Adapter Demo</h1>
-      <p class="subtitle">Testing MCP-UI actions through the MCP Apps adapter</p>
+      <h1>🔌 MCP Apps Demo</h1>
+      <p class="subtitle">Testing the current MCP Apps protocol</p>
       
       <div class="data-display">
         <div class="data-row">
@@ -205,28 +205,28 @@ app.post('/mcp', async (req, res) => {
     </div>
 
     <div class="card">
-      <h2>📤 MCP-UI Actions</h2>
+      <h2>📤 MCP Apps Actions</h2>
       <div class="actions-grid">
-        <button onclick="sendNotify()">
-          📢 Send Notify
+        <button id="sendLog">
+          📢 Send Log
         </button>
-        <button onclick="sendLink()">
+        <button id="openLink">
           🔗 Open Link
         </button>
-        <button onclick="sendPrompt()">
-          💬 Send Prompt
+        <button id="sendMessage">
+          💬 Send Message
         </button>
-        <button onclick="sendIntent()">
-          🎯 Send Intent
+        <button id="requestFullscreen">
+          🖥️ Fullscreen
         </button>
-        <button onclick="sendSizeChange()" class="secondary">
+        <button id="sendSizeChange" class="secondary">
           📐 Resize Widget
         </button>
-        <button onclick="callTool()" class="secondary">
+        <button id="callTool" class="secondary">
           🔧 Call Tool
         </button>
-        <button onclick="refreshData()" class="full-width">
-          🔄 Request Render Data
+        <button id="refreshContext" class="full-width">
+          🔄 Refresh Host Context
         </button>
       </div>
     </div>
@@ -234,12 +234,16 @@ app.post('/mcp', async (req, res) => {
     <div class="card">
       <h2>📋 Event Log</h2>
       <div id="log" class="log-area">
-        <div class="log-entry info">Waiting for adapter initialization...</div>
+        <div class="log-entry info">Waiting for MCP Apps initialization...</div>
       </div>
     </div>
   </div>
 
-  <script>
+  <script type="module">
+    import { App } from 'https://esm.sh/@modelcontextprotocol/ext-apps@0.2.2';
+
+    const app = new App({ name: 'weather-dashboard', version: '1.0.0' });
+
     // Log helper
     function log(message, type = 'info') {
       const logEl = document.getElementById('log');
@@ -257,112 +261,115 @@ app.post('/mcp', async (req, res) => {
       el.className = 'status-badge ' + (connected ? 'connected' : 'disconnected');
     }
 
-    // Listen for messages from adapter
-    window.addEventListener('message', (event) => {
-      const data = event.data;
-      if (!data || !data.type) return;
+    /**
+     * 将任意协议数据格式化为适合卡片展示的短文本。
+     *
+     * @param {unknown} value MCP Apps 协议传入的数据。
+     * @returns {string} 最多保留 60 个字符的 JSON 文本。
+     */
+    function formatValue(value) {
+      const text = JSON.stringify(value) ?? String(value);
+      return text.length > 60 ? text.substring(0, 60) + '...' : text;
+    }
 
-      log('Received: ' + data.type, 'info');
-
-      switch (data.type) {
-        case 'ui-lifecycle-iframe-render-data':
-          setStatus(true);
-          const renderData = data.payload?.renderData || {};
-          
-          if (renderData.toolInput) {
-            document.getElementById('toolInput').textContent = 
-              JSON.stringify(renderData.toolInput).substring(0, 30) + '...';
-            log('Tool input received: ' + JSON.stringify(renderData.toolInput), 'success');
-          }
-          
-          if (renderData.toolOutput) {
-            document.getElementById('toolOutput').textContent = 
-              JSON.stringify(renderData.toolOutput).substring(0, 30) + '...';
-            log('Tool output received', 'success');
-          }
-          break;
-
-        case 'ui-message-received':
-          log('Message acknowledged: ' + data.payload?.messageId, 'info');
-          break;
-
-        case 'ui-message-response':
-          if (data.payload?.error) {
-            log('Response error: ' + JSON.stringify(data.payload.error), 'warn');
-          } else {
-            log('Response received: ' + JSON.stringify(data.payload?.response || {}), 'success');
-          }
-          break;
+    /**
+     * 执行用户触发的 MCP Apps 操作，并统一记录成功或失败状态。
+     *
+     * @param {string} name 展示在事件日志中的操作名称。
+     * @param {() => Promise<unknown>} action 实际执行的异步操作。
+     * @returns {Promise<unknown | undefined>} 操作结果；失败时返回 undefined。
+     */
+    async function runAction(name, action) {
+      log('Sending: ' + name, 'info');
+      try {
+        const result = await action();
+        log(name + ' succeeded', 'success');
+        return result;
+      } catch (error) {
+        log(name + ' failed: ' + String(error), 'warn');
       }
+    }
+
+    /**
+     * 将当前 Host Context 写入事件日志，便于验证初始化握手结果。
+     *
+     * @returns {void}
+     */
+    function renderHostContext() {
+      const context = app.getHostContext();
+      log('Host context: ' + formatValue(context || {}), context ? 'success' : 'warn');
+    }
+
+    app.ontoolinput = (params) => {
+      document.getElementById('toolInput').textContent = formatValue(params.arguments || {});
+      log('Tool input received', 'success');
+    };
+
+    app.ontoolresult = (params) => {
+      document.getElementById('toolOutput').textContent = formatValue(params);
+      log('Tool output received', 'success');
+    };
+
+    document.getElementById('sendLog').addEventListener('click', () => {
+      void runAction('notifications/message', () => app.sendLog({
+        level: 'info',
+        data: 'Hello from the MCP Apps widget!',
+        logger: 'weather-dashboard',
+      }));
     });
 
-    // Helper to send MCP-UI messages
-    function sendMessage(type, payload) {
-      const messageId = 'msg-' + Date.now();
-      log('Sending: ' + type, 'info');
-      window.parent.postMessage({ type, messageId, payload }, '*');
-      return messageId;
-    }
+    document.getElementById('openLink').addEventListener('click', () => {
+      void runAction('ui/open-link', () => app.openLink({
+        url: 'https://github.com/modelcontextprotocol/ext-apps',
+      }));
+    });
 
-    // Action handlers
-    function sendNotify() {
-      sendMessage('notify', { 
-        message: 'Hello from MCP-UI widget! Time: ' + new Date().toLocaleTimeString() 
+    document.getElementById('sendMessage').addEventListener('click', () => {
+      void runAction('ui/message', () => app.sendMessage({
+        role: 'user',
+        content: [{ type: 'text', text: 'What is the weather like today?' }],
+      }));
+    });
+
+    document.getElementById('requestFullscreen').addEventListener('click', () => {
+      void runAction('ui/request-display-mode', async () => {
+        const modes = app.getHostContext()?.availableDisplayModes || [];
+        if (!modes.includes('fullscreen')) {
+          throw new Error('The host does not advertise fullscreen support');
+        }
+        return app.requestDisplayMode({ mode: 'fullscreen' });
       });
-    }
+    });
 
-    function sendLink() {
-      sendMessage('link', { 
-        url: 'https://github.com/modelcontextprotocol/ext-apps' 
-      });
-    }
-
-    function sendPrompt() {
-      sendMessage('prompt', { 
-        prompt: 'What is the weather like today?' 
-      });
-    }
-
-    function sendIntent() {
-      sendMessage('intent', { 
-        intent: 'get_forecast',
-        params: { days: 7, location: 'San Francisco' }
-      });
-    }
-
-    function sendSizeChange() {
+    document.getElementById('sendSizeChange').addEventListener('click', () => {
       const height = 300 + Math.floor(Math.random() * 200);
-      sendMessage('ui-size-change', { 
-        width: 500,
-        height: height
-      });
-      log('Requested size: 500x' + height, 'info');
-    }
+      void runAction('ui/notifications/size-changed', () =>
+        app.sendSizeChanged({ width: 500, height })
+      );
+    });
 
-    function callTool() {
-      sendMessage('tool', { 
-        toolName: 'weather_dashboard',
-        params: { location: 'New York' }
-      });
-    }
+    document.getElementById('callTool').addEventListener('click', () => {
+      void runAction('tools/call', () => app.callServerTool({
+        name: 'weather_dashboard',
+        arguments: { location: 'New York' },
+      }));
+    });
 
-    function refreshData() {
-      sendMessage('ui-request-render-data', {});
-    }
+    document.getElementById('refreshContext').addEventListener('click', renderHostContext);
 
-    // Signal ready state
-    log('Sending ready signal...', 'info');
-    window.parent.postMessage({ type: 'ui-lifecycle-iframe-ready' }, '*');
+    try {
+      await app.connect();
+      setStatus(true);
+      log('MCP Apps initialization completed', 'success');
+      renderHostContext();
+    } catch (error) {
+      setStatus(false);
+      log('MCP Apps initialization failed: ' + String(error), 'warn');
+    }
   </script>
 </body>
 </html>
         `,
-      },
-      adapters: {
-        // Enable the MCP Apps adapter
-        mcpApps: {
-          enabled: true,
-        },
       },
     });
 
@@ -371,7 +378,16 @@ app.post('/mcp', async (req, res) => {
       server,
       'weather_dashboard_ui',
       weatherDashboardUI.resource.uri,
-      {},
+      {
+        _meta: {
+          ui: {
+            csp: {
+              resourceDomains: ['https://esm.sh'],
+            },
+            prefersBorder: true,
+          },
+        },
+      },
       async () => ({
         contents: [weatherDashboardUI.resource],
       }),
