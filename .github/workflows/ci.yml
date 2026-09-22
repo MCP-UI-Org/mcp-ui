@@ -71,6 +71,33 @@ jobs:
       - name: Build
         run: pnpm build
 
+  examples_build:
+    needs: filter_changed_paths
+    if: needs.filter_changed_paths.outputs.example_files == 'true' || needs.filter_changed_paths.outputs.ts_server_files == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v2
+        with:
+          version: 10
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22.x
+          cache: 'pnpm'
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build TypeScript server SDK
+        run: pnpm --filter @mcp-ui/server build
+
+      - name: Build MCP Apps demo
+        run: pnpm --filter mcp-apps-demo build
+
   ruby_sdk_test:
     needs: filter_changed_paths
     if: needs.filter_changed_paths.outputs.ruby_sdk_files == 'true'
