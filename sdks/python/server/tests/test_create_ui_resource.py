@@ -3,7 +3,7 @@
 import base64
 
 import pytest
-from pydantic import AnyUrl, ValidationError
+from pydantic import ValidationError
 
 from mcp_ui_server import create_ui_resource
 from mcp_ui_server.exceptions import InvalidContentError, InvalidURIError
@@ -62,69 +62,90 @@ class TestCreateUIResource:
         """Test creating a text-based raw HTML resource."""
         resource = create_ui_resource(raw_html_text_options)
         expected = {
-            "meta": None,
+            "_meta": None,
             "annotations": None,
             "type": "resource",
             "resource": {
-                "meta": None,
-                "uri": AnyUrl("ui://test-html"),
+                "_meta": None,
+                "uri": "ui://test-html",
                 "mimeType": "text/html;profile=mcp-app",
                 "text": "<p>Test</p>",
             }
         }
-        assert resource.model_dump() == expected
+        assert resource.model_dump(mode="json", by_alias=True) == expected
 
     def test_create_blob_based_raw_html_resource(self, raw_html_blob_options):
         """Test creating a blob-based raw HTML resource."""
         resource = create_ui_resource(raw_html_blob_options)
         expected = {
-            "meta": None,
+            "_meta": None,
             "annotations": None,
             "type": "resource",
             "resource": {
-                "meta": None,
-                "uri": AnyUrl("ui://test-html-blob"),
+                "_meta": None,
+                "uri": "ui://test-html-blob",
                 "mimeType": "text/html;profile=mcp-app",
                 "blob": base64.b64encode(b"<h1>Blob</h1>").decode("ascii"),
             }
         }
-        assert resource.model_dump() == expected
+        assert resource.model_dump(mode="json", by_alias=True) == expected
 
     def test_create_text_based_external_url_resource(self, external_url_text_options):
         """Test creating a text-based external URL resource."""
         resource = create_ui_resource(external_url_text_options)
         expected = {
-            "meta": None,
+            "_meta": None,
             "annotations": None,
             "type": "resource",
             "resource": {
-                "meta": None,
-                "uri": AnyUrl("ui://test-url"),
+                "_meta": None,
+                "uri": "ui://test-url",
                 "mimeType": "text/html;profile=mcp-app",
                 "text": "https://example.com",
             }
         }
-        assert resource.model_dump() == expected
+        assert resource.model_dump(mode="json", by_alias=True) == expected
 
     def test_create_blob_based_external_url_resource(self, external_url_blob_options):
         """Test creating a blob-based external URL resource."""
         resource = create_ui_resource(external_url_blob_options)
         expected = {
-            "meta": None,
+            "_meta": None,
             "annotations": None,
             "type": "resource",
             "resource": {
-                "meta": None,
-                "uri": AnyUrl("ui://test-url-blob"),
+                "_meta": None,
+                "uri": "ui://test-url-blob",
                 "mimeType": "text/html;profile=mcp-app",
                 "blob": base64.b64encode(b"https://example.com/blob").decode("ascii"),
             }
         }
-        assert resource.model_dump() == expected
+        assert resource.model_dump(mode="json", by_alias=True) == expected
+
+    @pytest.mark.parametrize("encoding", ["text", "blob"])
+    def test_preserves_uri_normalization(self, encoding):
+        resource = create_ui_resource({
+            "uri": "ui://widget/space here",
+            "content": {"type": "rawHtml", "htmlString": "<p>Test</p>"},
+            "encoding": encoding,
+        })
+
+        result = resource.model_dump(mode="json", by_alias=True)
+        assert result["resource"]["uri"] == "ui://widget/space%20here"
 
 
 class TestCreateUIResourceValidationErrors:
     """Test suite for create_ui_resource validation errors."""
+
+    @pytest.mark.parametrize("encoding", ["text", "blob"])
+    def test_invalid_ui_uri_still_rejected(self, encoding):
+        options = {
+            "uri": "ui://[invalid",
+            "content": {"type": "rawHtml", "htmlString": "<p>Test</p>"},
+            "encoding": encoding,
+        }
+        with pytest.raises(ValidationError, match="url_parsing"):
+            create_ui_resource(options)
 
     def test_invalid_uri_prefix_with_raw_html(self):
         """Test error for invalid URI prefix with rawHtml."""

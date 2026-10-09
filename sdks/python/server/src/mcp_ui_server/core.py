@@ -138,23 +138,23 @@ def create_ui_resource(options_dict: dict[str, Any]) -> UIResource:
     # Create resource based on encoding type
     encoding = options.encoding
 
-    # Get additional properties including metadata
-    additional_props = _get_additional_resource_props(options)
+    # Keep URI validation and normalization before passing wire-format data to MCP.
+    resource_props = {
+        "uri": str(AnyUrl(options.uri)),
+        "mimeType": mime_type,
+        **_get_additional_resource_props(options),
+    }
 
     if encoding == "text":
-        resource: TextResourceContents | BlobResourceContents = TextResourceContents(
-            uri=AnyUrl(options.uri),
-            mimeType=mime_type,
-            text=actual_content_string,
-            **additional_props,
-        )
+        resource: TextResourceContents | BlobResourceContents = TextResourceContents.model_validate({
+            **resource_props,
+            "text": actual_content_string,
+        })
     elif encoding == "blob":
-        resource = BlobResourceContents(
-            uri=AnyUrl(options.uri),
-            mimeType=mime_type,
-            blob=base64.b64encode(actual_content_string.encode('utf-8')).decode('ascii'),
-            **additional_props,
-        )
+        resource = BlobResourceContents.model_validate({
+            **resource_props,
+            "blob": base64.b64encode(actual_content_string.encode('utf-8')).decode('ascii'),
+        })
     else:
         raise InvalidContentError(f"Invalid encoding type: {encoding}")
 
