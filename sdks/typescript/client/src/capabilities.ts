@@ -4,15 +4,12 @@ import { RESOURCE_MIME_TYPE } from '@modelcontextprotocol/ext-apps/app-bridge';
 /**
  * Extended ClientCapabilities type that includes the `extensions` field.
  *
- * This type is a forward-compatible extension of the MCP SDK's ClientCapabilities,
- * adding support for the `extensions` field pattern proposed in SEP-1724.
+ * Keeps extension capability values aligned with the MCP SDK's ClientCapabilities.
  *
  * @see https://github.com/modelcontextprotocol/modelcontextprotocol/issues/1724
  */
 export interface ClientCapabilitiesWithExtensions extends ClientCapabilities {
-  extensions?: {
-    [extensionName: string]: unknown;
-  };
+  extensions?: ClientCapabilities['extensions'];
 }
 
 /**
