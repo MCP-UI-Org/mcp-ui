@@ -282,6 +282,96 @@ describe('<AppFrame />', () => {
   });
 
   describe('lifecycle', () => {
+    it.each(['url', 'csp', 'both'] as const)(
+      'should finish pending setup when equivalent %s objects are recreated',
+      async (recreated) => {
+        const csp = { connectDomains: [], resourceDomains: ['https://cdn.example.com'] };
+        const sandbox = { url: defaultProps.sandbox.url, csp };
+        const onInitialized = vi.fn();
+        const { rerender } = render(
+          <AppFrame {...getPropsWithBridge({ sandbox, onInitialized })} />,
+        );
+        await waitFor(() => expect(document.querySelector('iframe')).not.toBeNull());
+
+        // Regression: equivalent metadata must not cancel the pending readiness continuation.
+        rerender(
+          <AppFrame
+            {...getPropsWithBridge({
+              sandbox: {
+                url: recreated === 'csp' ? sandbox.url : new URL(sandbox.url.href),
+                csp: recreated === 'url' ? csp : { ...csp },
+              },
+              onInitialized,
+            })}
+          />,
+        );
+        await act(async () => onReadyResolve());
+
+        expect(appHostUtils.setupSandboxProxyIframe).toHaveBeenCalledTimes(1);
+        expect(mockAppBridge.connect).toHaveBeenCalledTimes(1);
+        expect(mockAppBridge.sendSandboxResourceReady).toHaveBeenCalledWith({
+          html: defaultProps.html,
+          csp,
+        });
+        await act(async () => registeredOninitialized?.());
+        expect(onInitialized).toHaveBeenCalledTimes(1);
+      },
+    );
+
+    it('should not resend HTML for an equivalent CSP after initialization', async () => {
+      const csp = { resourceDomains: ['https://cdn.example.com'] };
+      const { rerender } = render(
+        <AppFrame {...getPropsWithBridge({ sandbox: { ...defaultProps.sandbox, csp } })} />,
+      );
+      await act(async () => onReadyResolve());
+      await act(async () => registeredOninitialized?.());
+      expect(mockAppBridge.sendSandboxResourceReady).toHaveBeenCalledTimes(1);
+
+      rerender(
+        <AppFrame
+          {...getPropsWithBridge({ sandbox: { ...defaultProps.sandbox, csp: { ...csp } } })}
+        />,
+      );
+
+      expect(appHostUtils.setupSandboxProxyIframe).toHaveBeenCalledTimes(1);
+      expect(mockAppBridge.sendSandboxResourceReady).toHaveBeenCalledTimes(1);
+    });
+
+    it('should restart pending setup when CSP values change and send only the new policy', async () => {
+      const oldCsp = { resourceDomains: ['https://old.example.com'] };
+      const newCsp = { resourceDomains: ['https://new.example.com'] };
+      const { rerender } = render(
+        <AppFrame {...getPropsWithBridge({ sandbox: { ...defaultProps.sandbox, csp: oldCsp } })} />,
+      );
+      await waitFor(() => expect(document.querySelector('iframe')).not.toBeNull());
+      const resolveOld = onReadyResolve;
+      const secondIframe = document.createElement('iframe');
+      const secondReady = new Promise<void>((resolve) => {
+        onReadyResolve = resolve;
+      });
+      vi.mocked(appHostUtils.setupSandboxProxyIframe).mockResolvedValue({
+        iframe: secondIframe,
+        onReady: secondReady,
+      });
+
+      rerender(
+        <AppFrame {...getPropsWithBridge({ sandbox: { ...defaultProps.sandbox, csp: newCsp } })} />,
+      );
+      await act(async () => resolveOld());
+      expect(mockAppBridge.connect).not.toHaveBeenCalled();
+      await act(async () => onReadyResolve());
+
+      expect(appHostUtils.setupSandboxProxyIframe).toHaveBeenCalledTimes(2);
+      const configuredUrl = vi.mocked(appHostUtils.setupSandboxProxyIframe).mock.calls.at(-1)?.[0];
+      expect(JSON.parse(configuredUrl!.searchParams.get('csp')!)).toEqual(newCsp);
+      expect(mockAppBridge.connect).toHaveBeenCalledTimes(1);
+      expect(mockAppBridge.sendSandboxResourceReady).toHaveBeenCalledTimes(1);
+      expect(mockAppBridge.sendSandboxResourceReady).toHaveBeenCalledWith({
+        html: defaultProps.html,
+        csp: newCsp,
+      });
+    });
+
     it('should cancel sandbox timeout when effect cleanup fires before await resolves (StrictMode)', async () => {
       // Simulate the cancelRef being populated synchronously (as the real impl does).
       // Capture the cancelRef passed to setupSandboxProxyIframe and verify cancel() is
