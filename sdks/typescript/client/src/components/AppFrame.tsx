@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 
 import type { CallToolResult, Implementation } from '@modelcontextprotocol/sdk/types.js';
 
@@ -118,6 +118,15 @@ export const AppFrame = (props: AppFrameProps) => {
   const { html, sandbox, appBridge, onSizeChanged, onInitialized, toolInput, toolResult, onError } =
     props;
 
+  // Metadata values define the sandbox lifetime, not the caller's object references.
+  // Keep the CSP stable for HTML delivery as well as iframe initialization.
+  const cspJson = JSON.stringify(sandbox.csp);
+  const sandboxCsp = useMemo<McpUiResourceCsp | undefined>(
+    () => (cspJson === undefined ? undefined : JSON.parse(cspJson)),
+    [cspJson],
+  );
+  const sandboxUrlString = buildSandboxUrl(sandbox.url, sandboxCsp).href;
+
   const [iframeReady, setIframeReady] = useState(false);
   const [bridgeConnected, setBridgeConnected] = useState(false);
   const [error, setError] = useState<Error | null>(null);
@@ -144,8 +153,7 @@ export const AppFrame = (props: AppFrameProps) => {
     // Build sandbox URL with CSP query parameter for HTTP header-based CSP enforcement.
     // Servers that support this will parse the CSP from the query param and set it via
     // HTTP headers (tamper-proof). The CSP is also sent via postMessage as fallback.
-    const sandboxUrl = buildSandboxUrl(sandbox.url, sandbox.csp);
-    const sandboxUrlString = sandboxUrl.href;
+    const sandboxUrl = new URL(sandboxUrlString);
 
     // If we already have an iframe set up for this sandbox URL AND the same appBridge, skip setup
     // This preserves the iframe state across React re-renders (including StrictMode)
@@ -244,7 +252,7 @@ export const AppFrame = (props: AppFrameProps) => {
       mounted = false;
       cancelRef.cancel?.();
     };
-  }, [sandbox.url, sandbox.csp, appBridge]);
+  }, [sandboxUrlString, appBridge]);
 
   // Effect 2: Send HTML to sandbox when bridge is connected
   useEffect(() => {
@@ -257,7 +265,7 @@ export const AppFrame = (props: AppFrameProps) => {
         console.log('[AppFrame] Sending HTML to sandbox');
         await appBridge.sendSandboxResourceReady({
           html,
-          csp: sandbox.csp,
+          csp: sandboxCsp,
         });
       } catch (err) {
         const error = err instanceof Error ? err : new Error(String(err));
@@ -267,7 +275,7 @@ export const AppFrame = (props: AppFrameProps) => {
     };
 
     sendHtml();
-  }, [bridgeConnected, html, appBridge, sandbox.csp]);
+  }, [bridgeConnected, html, appBridge, sandboxCsp]);
 
   // Effect 3: Send tool input when ready
   useEffect(() => {
